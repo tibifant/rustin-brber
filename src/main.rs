@@ -1,8 +1,14 @@
 mod config;
 mod rest;
+mod dungeon_player_error;
 
-fn main() {
-    env_logger::init();
-    let game_service_rest_adapter = rest::game_service_restadapter::GameServiceRESTAdapter::new();
-    let test = game_service_rest_adapter.get_open_games().expect("Failed to get open games");
+mod player;
+mod dungeon_player_startup_handler;
+mod rabbitmq;
+
+#[tokio::main]
+async fn main() {
+    tracing_subscriber::fmt::init();
+    let mut startup_handler = dungeon_player_startup_handler::DungeonPlayerStartupHandler::new();
+    startup_handler.register_player().await;
 }
