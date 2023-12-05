@@ -2,10 +2,14 @@ use std::error::Error;
 
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use tracing::{info, instrument};
+use tracing::info;
 
 use crate::config::CONFIG;
 use crate::player::player::Player;
+use crate::rest::request::create_game_request_body::CreateGameRequestBody;
+use crate::rest::request::fetch_player_request_query::FetchPlayerRequestQuery;
+use crate::rest::request::register_player_request_body::RegisterPlayerRequestBody;
+use crate::rest::response::game_info_response_body::GameInfoResponseBody;
 
 use super::client::HttpClient;
 use super::errors::{GameCreationError, PlayerRegistrationError};
@@ -127,38 +131,14 @@ impl GameServiceRESTAdapter {
     }
 }
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateGameRequestBody {
-    pub max_players: u16,
-    pub max_rounds: u16,
-}
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RegisterPlayerRequestBody {
-    pub name: String,
-    pub email: String,
-}
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct FetchPlayerRequestQuery {
-    pub name: String,
-    #[serde(rename = "mail")]
-    pub email: String,
-}
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GameInfoResponseBody {
-    pub game_id: String,
-    pub game_status: GameStatus,
-    pub max_players: u16,
-    pub max_rounds: u16,
-    pub current_round_number: Option<u16>,
-    pub round_length_in_millis: u16,
-    pub participating_players: Vec<String>,
-}
 
+
+
+
+//TODO: Move in game package when game package is created
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum GameStatus {
@@ -273,7 +253,7 @@ mod tests {
 
         let fake_response = ResponseTemplate::new(201)
             .set_body_json(Player {
-                player_id: Some(id),
+                player_id: id,
                 name: "test".to_string(),
                 email: "test@mail.de".to_string(),
                 player_exchange: "player-test".to_string(),
@@ -291,7 +271,7 @@ mod tests {
         let result = client.register_player().await;
 
         let player = result.unwrap();
-        assert_eq!(player.player_id, Some(id));
+        assert_eq!(player.player_id, id);
         assert_eq!(player.name, "test");
         assert_eq!(player.email, "test@mail.de");
         assert_eq!(player.player_exchange, "player-test");
@@ -318,7 +298,7 @@ mod tests {
             .and(path("/players"))
             .respond_with(ResponseTemplate::new(200)
                 .set_body_json(Player {
-                    player_id: Some(id),
+                    player_id: id,
                     name: "test".to_string(),
                     email: "test@mail.de".to_string(),
                     player_exchange: "player-test".to_string(),
