@@ -4,7 +4,7 @@ mod dungeon_player_error;
 
 mod player;
 mod dungeon_player_startup_handler;
-mod rabbitmq;
+mod eventinfrastructure;
 
 #[tokio::main]
 async fn main() {
