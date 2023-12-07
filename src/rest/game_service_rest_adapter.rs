@@ -2,17 +2,18 @@ use std::error::Error;
 
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{error, info};
 
 use crate::config::CONFIG;
 use crate::player::player::Player;
+use crate::rest::request::command::command::Command;
 use crate::rest::request::create_game_request_body::CreateGameRequestBody;
 use crate::rest::request::fetch_player_request_query::FetchPlayerRequestQuery;
 use crate::rest::request::register_player_request_body::RegisterPlayerRequestBody;
 use crate::rest::response::game_info_response_body::GameInfoResponseBody;
 
 use super::client::HttpClient;
-use super::errors::{GameCreationError, PlayerRegistrationError};
+use super::errors::{GameCreationError, PlayerRegistrationError, CommandError};
 
 #[derive(Debug)]
 pub struct GameServiceRESTAdapter {
@@ -33,19 +34,19 @@ impl GameServiceRESTAdapter {
         return self;
     }
 
-    pub async fn get_open_games(&self) -> Result<Vec<GameInfoResponseBody>, Box<dyn Error>> {
+
+    pub async fn get_joinable_games(&self) -> Result<Vec<GameInfoResponseBody>, Box<dyn Error>> {
         let url = format!("{}/games", self.game_host);
 
         let response = self.client.async_client.get(&url).send().await?;
-        let response_text = response.text().await?;
 
-        let games: Vec<GameInfoResponseBody> = serde_json::from_str(&response_text)?;
+        let games: Vec<GameInfoResponseBody> = response.json().await?;
 
         for game in &games {
             info!("Game: {:?}", game);
         }
 
-        Ok(games)
+        Ok(games.iter().filter(|game| game.game_status == GameStatus::CREATED).cloned().collect())
     }
 
 
@@ -71,16 +72,53 @@ impl GameServiceRESTAdapter {
             }
         }
     }
-    pub async fn join_game(&self, game_id: &str) -> Result<GameInfoResponseBody, Box<dyn Error>> {
-        let url = format!("{}/games/{}/players", self.game_host, game_id);
-        let response = self.client.async_client.post(&url).send().await?;
-        let response_text = response.text().await?;
+    pub async fn join_game(&self, game_id: &str) {
+        let player_id = self.fetch_player().await.unwrap().player_id;
+        let url = format!("{}/games/{}/players/{}", self.game_host, game_id, player_id);
 
-        let game: GameInfoResponseBody = serde_json::from_str(&response_text)?;
+        let response = self.client.async_client.put(&url).send().await;
+        match response {
+            Ok(response) => {
+                match response.status() {
+                    StatusCode::OK => {
+                        info!("Player joined game: {}", response.text().await.unwrap());
+                    }
+                    _ => {
+                        error!("Player could not join game: {}", response.text().await.unwrap());
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Player could not join game: {}", e);
+            }
+        }
+    }
 
-        info!("Game: {:?}", game);
-
-        Ok(game)
+    pub async fn send_command(&self, command: Command) -> Result<(), CommandError> {
+        let url = format!("{}/commands", self.game_host);
+        let response = self.client.async_client.post(&url).json(&command).send().await;
+        match response {
+            Ok(response) => {
+                match response.status() {
+                    StatusCode::CREATED => {
+                        info!("Command sent: {}", response.text().await.unwrap());
+                        Ok(())
+                    }
+                    StatusCode::BAD_REQUEST => {
+                        Err(CommandError::MultipleCauseError(response.text().await.unwrap()))
+                    }
+                    StatusCode::NOT_FOUND => {
+                        Err(CommandError::PlayerOrGameNotFound(response.text().await.unwrap()))
+                    }
+                    _ => {
+                        Err(CommandError::UnknownError(format!("Unexpected status code: {} \n {}", response.status(), response.text().await.unwrap())))
+                    }
+                }
+            }
+            Err(e) => {
+                Err(CommandError::UnknownError(e.to_string()))
+            }
+        }
     }
 
 
@@ -131,20 +169,13 @@ impl GameServiceRESTAdapter {
     }
 }
 
-
-
-
-
-
-
-
 //TODO: Move in game package when game package is created
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum GameStatus {
     CREATED,
     STARTED,
-    FINISHED,
+    ENDED,
 }
 
 #[cfg(test)]
@@ -157,9 +188,16 @@ mod tests {
 
     use super::*;
 
+
+    async fn setup_mock_server_and_client() -> (MockServer, GameServiceRESTAdapter) {
+        let mock_server = MockServer::start().await;
+        let client = GameServiceRESTAdapter::new().with_game_host(mock_server.uri());
+        (mock_server, client)
+    }
+
     #[tokio::test]
     async fn test_create_game_success() {
-        let mock_server = MockServer::start().await;
+        let (mock_server, client) = setup_mock_server_and_client().await;
 
         let fake_response = ResponseTemplate::new(201)
             .set_body_json(GameInfoResponseBody {
@@ -178,7 +216,6 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = GameServiceRESTAdapter::new().with_game_host(mock_server.uri());
         let result = client.create_game(4, 10).await;
 
         let game = result.unwrap();
@@ -193,7 +230,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_game_active_game_exists() {
-        let mock_server = MockServer::start().await;
+        let (mock_server, client) = setup_mock_server_and_client().await;
 
         Mock::given(method("POST"))
             .and(path("/games"))
@@ -201,7 +238,6 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = GameServiceRESTAdapter::new().with_game_host(mock_server.uri());
         let result = client.create_game(4, 10).await;
         match result {
             Err(e) => {
@@ -220,7 +256,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_create_game_unexpected_error() {
-        let mock_server = MockServer::start().await;
+        let (mock_server, client) = setup_mock_server_and_client().await;
 
         Mock::given(method("POST"))
             .and(path("/games"))
@@ -228,7 +264,6 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = GameServiceRESTAdapter::new().with_game_host(mock_server.uri());
         let result = client.create_game(4, 10).await;
 
         match result {
@@ -248,7 +283,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_player_success() {
-        let mock_server = MockServer::start().await;
+        let (mock_server, client) = setup_mock_server_and_client().await;
         let id = Uuid::new_v4();
 
         let fake_response = ResponseTemplate::new(201)
@@ -266,7 +301,6 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = GameServiceRESTAdapter::new().with_game_host(mock_server.uri());
 
         let result = client.register_player().await;
 
@@ -280,7 +314,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_player_already_exists_but_returns_fetched_player() {
-        let mock_server = MockServer::start().await;
+        let (mock_server, client) = setup_mock_server_and_client().await;
         let id = Uuid::new_v4();
 
         let fake_response = ResponseTemplate::new(400)
@@ -307,7 +341,6 @@ mod tests {
             .mount(&mock_server)
             .await;
 
-        let client = GameServiceRESTAdapter::new().with_game_host(mock_server.uri());
 
         let result = client.register_player().await;
 

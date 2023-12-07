@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::rest::game_service_rest_adapter::GameStatus;
 
-#[derive(Serialize,Deserialize, Debug)]
+#[derive(Serialize,Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GameInfoResponseBody {
     pub game_id: String,
