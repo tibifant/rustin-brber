@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::eventinfrastructure::game::game_status_event::GameStatusEvent;
 use crate::eventinfrastructure::game::round_status_event::RoundStatusEvent;
@@ -18,18 +18,18 @@ use crate::eventinfrastructure::trading::bank_account_cleared_event::BankAccount
 use crate::eventinfrastructure::trading::bank_account_initialized_event::BankAccountInitializedEvent;
 use crate::eventinfrastructure::trading::bank_account_transaction_booked::BankAccountTransactionBookedEvent;
 use crate::eventinfrastructure::trading::tradable_bought_event::TradableBoughtEvent;
-use crate::eventinfrastructure::trading::tradable_prices_event::TradableItem;
+use crate::eventinfrastructure::trading::tradable_prices_event::TradablePricesEvent;
 use crate::eventinfrastructure::trading::tradable_sold_event::TradableSoldEvent;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "type", content = "event")]
-pub enum GameEventType {
+pub enum GameEventBodyType {
     //Status Events
     GameStatus(GameStatusEvent),
     RoundStatus(RoundStatusEvent),
     
     //Trading/Player Events
-    TradablePrices(Vec<TradableItem>),
+    TradablePrices(TradablePricesEvent),
     BankAccountInitialized(BankAccountInitializedEvent),
     BankAccountCleared(BankAccountClearedEvent),
     BankAccountTransactionBooked(BankAccountTransactionBookedEvent),
@@ -52,3 +52,4 @@ pub enum GameEventType {
     #[serde(alias = "error")]
     ErrorEvent(GameErrorEvent)
 }
+

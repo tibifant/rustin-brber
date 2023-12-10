@@ -7,7 +7,7 @@ use crate::rest::request::command::robot_restoration_type::RobotRestorationType;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Command {
-    player_id: String,
+    pub player_id: String,
     #[serde(rename = "type")]
     command_type: CommandType,
     #[serde(rename = "data")]
@@ -101,9 +101,9 @@ impl Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::rest::request::command::command_type::CommandType;
-    use crate::rest::request::command::command::Command;
     use crate::rest::command_object::CommandObject;
+    use crate::rest::request::command::command::Command;
+    use crate::rest::request::command::command_type::CommandType;
 
     #[test]
     fn test_create_movement_command() {

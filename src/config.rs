@@ -1,5 +1,7 @@
 use std::env;
+
 use lazy_static::lazy_static;
+
 pub struct Config {
     pub game_service_host: String,
     pub game_service_port: u16,
@@ -9,6 +11,7 @@ pub struct Config {
     pub rabbitmq_port: u16,
     pub rabbitmq_username: String,
     pub rabbitmq_password: String,
+    pub dev_mode: bool,
 }
 
 impl Config {
@@ -22,6 +25,10 @@ impl Config {
             rabbitmq_port: env::var("RABBITMQ_PORT").unwrap_or(5672.to_string()).parse::<u16>().unwrap(),
             rabbitmq_username: env::var("RABBITMQ_USERNAME").unwrap_or("admin".to_string()),
             rabbitmq_password: env::var("RABBITMQ_PASSWORD").unwrap_or("admin".to_string()),
+            dev_mode: match env::var("DEV_MODE") {
+                Ok(val) => val == "true",
+                Err(_) => true,
+            }
         }
     }
 }

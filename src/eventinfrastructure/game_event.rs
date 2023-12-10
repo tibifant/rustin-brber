@@ -1,11 +1,12 @@
-use serde::{Deserialize, Serialize};
-use crate::eventinfrastructure::game_event_header::GameEventHeader;
-use crate::eventinfrastructure::game_event_type::GameEventType;
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize, Debug)]
+use crate::eventinfrastructure::game_event_header::GameEventHeader;
+use crate::eventinfrastructure::game_event_body_type::GameEventBodyType;
+
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct GameEvent {
    pub header: GameEventHeader,
-   pub event: GameEventType,
+   pub event_body: GameEventBodyType,
 }
 

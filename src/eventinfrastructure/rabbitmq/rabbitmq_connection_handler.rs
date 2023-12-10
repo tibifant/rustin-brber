@@ -1,9 +1,12 @@
 use amqprs::callbacks::{DefaultChannelCallback, DefaultConnectionCallback};
 use amqprs::channel::{BasicConsumeArguments, Channel};
 use amqprs::connection::{Connection, OpenConnectionArguments};
+
 use crate::config::CONFIG;
+use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
 use crate::eventinfrastructure::rabbitmq::errors::RabbitMQConnectionError;
 use crate::player::player::Player;
+
 use super::rabbitmq_consumer::RabbitMQConsumer;
 
 pub struct RabbitMQConnectionHandler {
@@ -29,13 +32,13 @@ impl RabbitMQConnectionHandler {
             channel,
         })
     }
-    pub async fn listen_for_events(&self, player: &Player) {
+    pub async fn listen_for_events(&self, player: &Player, event_dispatcher: EventDispatcher) {
         self.channel
             .basic_consume(
-                RabbitMQConsumer::new(false),
+                RabbitMQConsumer::new(false, event_dispatcher),
                 BasicConsumeArguments::new(
                     &player.player_queue,
-                    "RustDungeonPlayerConsumer",
+                    format!("{}-CONSUMER", CONFIG.player_name).as_str(),
                 ),
             )
             .await

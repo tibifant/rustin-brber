@@ -13,3 +13,17 @@ pub struct GameEventHeader {
     #[serde(rename = "kafka-topic")]
     pub kafka_topic: Option<String>,
 }
+
+impl Default for GameEventHeader {
+    fn default() -> Self {
+        Self {
+            event_id: None,
+            version: None,
+            player_id: None,
+            timestamp: None,
+            transaction_id: None,
+            event_type: None,
+            kafka_topic: None,
+        }
+    }
+}

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+
 use crate::eventinfrastructure::map::dto::resource_type_dto::ResourceTypeDto;
 
 //TODO: Move into robot once we have a robot module

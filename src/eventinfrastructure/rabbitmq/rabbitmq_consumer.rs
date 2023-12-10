@@ -1,29 +1,27 @@
-use std::error::Error;
-use std::ops::Deref;
 
-use amqprs::{BasicProperties, Deliver, FieldTable, FieldValue, ShortStr};
+
+use amqprs::{BasicProperties, Deliver, FieldValue, ShortStr};
 use amqprs::channel::{BasicAckArguments, Channel};
 use amqprs::consumer::AsyncConsumer;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
-use serde::de::{MapAccess, Visitor};
 use serde_json::{json, Value};
-use tracing::{error, info};
+use tracing::error;
+use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
 use crate::eventinfrastructure::game_event::GameEvent;
-use crate::eventinfrastructure::game_event_type::GameEventType;
-
+use crate::eventinfrastructure::game_event_body_type::GameEventBodyType;
 use crate::eventinfrastructure::rabbitmq::errors::ParseError;
 
 use super::super::game_event_header::GameEventHeader;
 
 pub struct RabbitMQConsumer {
     no_ack: bool,
+    event_dispatcher: EventDispatcher,
 }
 
 
 impl RabbitMQConsumer {
-    pub fn new(no_ack: bool) -> Self {
-        Self { no_ack }
+    pub fn new(no_ack: bool, event_dispatcher: EventDispatcher) -> Self {
+        Self { no_ack, event_dispatcher }
     }
 
     fn parse_header(&self, properties: BasicProperties) -> Result<GameEventHeader, ParseError> {
@@ -56,6 +54,10 @@ impl RabbitMQConsumer {
             Err(ParseError::InvalidType(format!("Expected a ByteArray as type of header value but was: {:?}", value)))
         }
     }
+
+    async fn handle_event(&self, game_event: GameEvent) {
+        self.event_dispatcher.dispatch(game_event).await;
+    }
 }
 
 
@@ -68,12 +70,6 @@ impl AsyncConsumer for RabbitMQConsumer {
         _basic_properties: BasicProperties,
         content: Vec<u8>,
     ) {
-        info!(
-            "consume delivery {} on channel {}, content size: {}",
-            deliver,
-            channel,
-            content.len()
-        );
         let header = match self.parse_header(_basic_properties) {
             Ok(header) => header,
             Err(e) => {
@@ -93,9 +89,9 @@ impl AsyncConsumer for RabbitMQConsumer {
             "event": body_json
         });
 
-        let game_event_type: GameEventType = match serde_json::from_value(game_event_json) {
+        let game_event_type: GameEventBodyType = match serde_json::from_value(game_event_json) {
             Ok(game_event) => game_event,
-            Err(e) => {
+            Err(_) => {
                 let error: ParseError = ParseError::InvalidType(format!("{:?}\n{}", header.event_type, serde_json::to_string_pretty(&body_json).expect("Could not serialize body to string")));
                 error!("{}", error);
                 return;
@@ -103,9 +99,9 @@ impl AsyncConsumer for RabbitMQConsumer {
         };
         let game_event = GameEvent {
             header,
-            event: game_event_type,
+            event_body: game_event_type,
         };
-        info!("GameEvent: {:?}", game_event);
+        self.handle_event(game_event).await;
         if !self.no_ack {
             #[cfg(feature = "traces")]
             info!("ack to delivery {} on channel {}", deliver, channel);
@@ -117,9 +113,18 @@ impl AsyncConsumer for RabbitMQConsumer {
 
 #[cfg(test)]
 mod test {
+    use std::sync::Arc;
+
     use amqprs::{FieldName, FieldTable};
 
+    use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
+    use crate::rest::game_service_rest_adapter_impl::GameServiceRestAdapterImpl;
+
     use super::*;
+
+    fn get_rabbitmq_consumer() -> RabbitMQConsumer {
+        RabbitMQConsumer::new(false, EventDispatcher::new(Arc::new(GameServiceRestAdapterImpl::new())))
+    }
 
     #[test]
     fn test_parse_header() {
@@ -133,7 +138,7 @@ mod test {
         headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
         headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
         let properties = BasicProperties::default().with_headers(headers).to_owned();
-        let consumer = RabbitMQConsumer::new(false);
+        let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties).unwrap();
         assert_eq!(header.event_id.unwrap(), "eventId");
         assert_eq!(header.version.unwrap(), "version");
@@ -155,7 +160,7 @@ mod test {
         headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
         headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
         let properties = BasicProperties::default().with_headers(headers).to_owned();
-        let consumer = RabbitMQConsumer::new(false);
+        let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header.unwrap_err() {
@@ -175,7 +180,7 @@ mod test {
         headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
         headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
         let properties = BasicProperties::default().with_headers(headers).to_owned();
-        let consumer = RabbitMQConsumer::new(false);
+        let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header {
@@ -195,7 +200,7 @@ mod test {
         headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
         headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
         let properties = BasicProperties::default().with_headers(headers).to_owned();
-        let consumer = RabbitMQConsumer::new(false);
+        let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header {
@@ -215,7 +220,7 @@ mod test {
         headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
         headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
         let properties = BasicProperties::default().with_headers(headers).to_owned();
-        let consumer = RabbitMQConsumer::new(false);
+        let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header {
@@ -235,7 +240,7 @@ mod test {
         headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
         headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
         let properties = BasicProperties::default().with_headers(headers).to_owned();
-        let consumer = RabbitMQConsumer::new(false);
+        let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header {

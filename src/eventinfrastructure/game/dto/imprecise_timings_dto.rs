@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct ImpreciseTimingDto {
     #[serde(alias="commandInputEnd")]
-    command_input_ended: Option<String>,
+    pub command_input_ended: Option<String>,
     #[serde(alias="roundEnd")]
-    round_ended: Option<String>,
+    pub round_ended: Option<String>,
     #[serde(alias="roundStart")]
-    round_started: String
+    pub round_started: String
 }

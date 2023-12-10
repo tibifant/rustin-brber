@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize, Deserializer};
+use serde::{Deserialize, Serialize};
+
 use crate::eventinfrastructure::robot::robot_level::RobotLevels;
 
 #[derive(Serialize, Deserialize,Debug)]

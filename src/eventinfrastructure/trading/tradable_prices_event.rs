@@ -1,12 +1,20 @@
-use serde::{Deserialize, Serialize};
-use crate::eventinfrastructure::trading::dto::tradable_item_type::TradableItemType;
+use serde::Deserialize;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct TradableItem {
-    pub name: String,
-    pub price: u16,
-    #[serde(rename = "type")]
-    pub tradable_type: TradableItemType,
+use crate::eventinfrastructure::trading::dto::tradable_item_dto::TradableItemDto;
+
+#[derive(Debug)]
+pub struct TradablePricesEvent {
+    pub items: Vec<TradableItemDto>,
 }
+
+impl<'de> Deserialize<'de> for TradablePricesEvent {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: serde::Deserializer<'de>,
+    {
+        let items = Vec::<TradableItemDto>::deserialize(deserializer)?;
+        Ok(TradablePricesEvent { items })
+    }
+}
+
 

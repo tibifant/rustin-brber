@@ -8,6 +8,6 @@ mod eventinfrastructure;
 async fn main() {
     tracing_subscriber::fmt::init();
     let mut startup_handler = dungeon_player_startup_handler::DungeonPlayerStartupHandler::new().await;
-    startup_handler.register_and_listen_for_events().await;
+    startup_handler.start().await;
     tokio::signal::ctrl_c().await.expect("Failed to listen for CTRL-C");
 }

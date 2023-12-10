@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use crate::rest::game_service_rest_adapter::GameStatus;
+
+use crate::rest::game_service_rest_adapter_impl::GameStatus;
 
 #[derive(Serialize,Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]

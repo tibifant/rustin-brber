@@ -9,7 +9,15 @@ pub enum GameCreationError {
 }
 
 #[derive(Error, Debug)]
-pub enum PlayerRegistrationError {
+pub enum GameServiceError {
+    #[error("A request was tried to be sent to the Game Service at but the Game Service was not reachable. {0}")]
+    NotReachableError(reqwest::Error),
+    #[error("Unexpected error: {0}")]
+    UnexpectedError(String),
+}
+
+#[derive(Error, Debug)]
+pub enum PlayerError {
     #[error("Player name was taken and while fetching the details of the player the player was not found. This should not happen.")]
     PlayerNotFoundError,
     #[error("Unexpected error: {0}")]
