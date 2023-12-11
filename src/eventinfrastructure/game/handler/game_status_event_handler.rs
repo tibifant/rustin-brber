@@ -5,7 +5,7 @@ use tracing::{error, info};
 
 use crate::eventinfrastructure::event_handler::EventHandler;
 use crate::eventinfrastructure::game::game_status_event::GameStatusEvent;
-use crate::rest::game_service_rest_adapter::{GameServiceRestAdapterTrait, MockGameServiceRestAdapterTrait};
+use crate::rest::game_service_rest_adapter::{GameServiceRestAdapterTrait};
 use crate::rest::game_service_rest_adapter_impl::GameStatus;
 use crate::rest::request::command::command::Command;
 

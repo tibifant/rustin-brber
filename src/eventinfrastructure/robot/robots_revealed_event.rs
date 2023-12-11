@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-
-use crate::eventinfrastructure::robot::robot_level::RobotLevels;
+use crate::eventinfrastructure::robot::dto::robots_revealed_robot_dto::RobotsRevealedRobotDto;
 
 #[derive(Serialize, Deserialize,Debug)]
 #[serde(rename_all = "camelCase")]
@@ -8,13 +7,4 @@ pub struct RobotsRevealedEvent {
     pub robots: Vec<RobotsRevealedRobotDto>,
 }
 
-#[derive(Serialize, Deserialize,Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct RobotsRevealedRobotDto {
-    pub robot_id : String,
-    pub planet_id : String,
-    pub player_notion : String,
-    pub levels : RobotLevels,
-    pub health : u16,
-    pub energy : u16,
-}
+
