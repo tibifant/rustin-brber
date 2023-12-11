@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use crate::rest::request::command::command_object::CommandObject;
-
-use crate::rest::request::command::command_type::CommandType;
-use crate::rest::request::command::robot_restoration_type::RobotRestorationType;
+use crate::domainprimitives::command::command_object::CommandObject;
+use crate::domainprimitives::command::command_type::CommandType;
+use crate::domainprimitives::purchasing::robot_restoration_type::RobotRestorationType;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -101,9 +100,7 @@ impl Command {
 
 #[cfg(test)]
 mod tests {
-    use crate::rest::request::command::command::Command;
-    use crate::rest::request::command::command_object::CommandObject;
-    use crate::rest::request::command::command_type::CommandType;
+    use super::*;
 
     #[test]
     fn test_create_movement_command() {

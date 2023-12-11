@@ -8,9 +8,9 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use crate::config::CONFIG;
+use crate::domainprimitives::command::command::Command;
 use crate::player::player::Player;
 use crate::rest::game_service_rest_adapter::GameServiceRestAdapterTrait;
-use crate::rest::request::command::command::Command;
 use crate::rest::request::create_game_request_body::CreateGameRequestBody;
 use crate::rest::request::fetch_player_request_query::FetchPlayerRequestQuery;
 use crate::rest::request::register_player_request_body::RegisterPlayerRequestBody;

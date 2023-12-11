@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::domainprimitives::robot_level::RobotLevel;
+use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 
 
 //TODO: Move into robot once we have a robot module

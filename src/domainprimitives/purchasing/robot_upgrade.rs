@@ -1,5 +1,5 @@
-use crate::domainprimitives::robot_level::{RobotLevel, RobotLevelError};
-use crate::domainprimitives::robot_upgrade_type::RobotUpgradeType;
+use crate::domainprimitives::purchasing::robot_level::{RobotLevel, RobotLevelError};
+use crate::domainprimitives::purchasing::robot_upgrade_type::RobotUpgradeType;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct RobotUpgrade {
@@ -58,14 +58,24 @@ impl RobotUpgrade {
 
 #[cfg(test)]
 mod tests {
-    use crate::domainprimitives::robot_upgrade::RobotUpgrade;
-    use crate::domainprimitives::robot_upgrade_type::RobotUpgradeType;
-    use crate::domainprimitives::robot_level::{RobotLevel, RobotLevelError};
-
+    use super::*;
     #[test]
     fn test_get_next_level() {
         let upgrade = RobotUpgrade::base_for_type(RobotUpgradeType::Health);
         assert_eq!(upgrade.get_next_level().unwrap(), RobotLevel::LEVEL1);
+    }
+
+    #[test]
+    fn test_get_next_level_2() {
+        let upgrade = RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL2);
+        assert_eq!(upgrade.get_next_level().unwrap(), RobotLevel::LEVEL3);
+    }
+
+    #[test]
+    fn get_for_type_and_level() {
+        let upgrade = RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL2);
+        assert_eq!(upgrade.upgrade_type, RobotUpgradeType::Health);
+        assert_eq!(upgrade.level, RobotLevel::LEVEL2);
     }
 
     #[test]

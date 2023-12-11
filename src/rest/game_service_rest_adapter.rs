@@ -2,9 +2,9 @@ use std::error::Error;
 use std::fmt::Debug;
 
 use async_trait::async_trait;
+use crate::domainprimitives::command::command::Command;
 
 use crate::player::player::Player;
-use crate::rest::request::command::command::Command;
 use crate::rest::response::command_info_response::CommandInfoResponse;
 use crate::rest::response::game_info_response_body::GameInfoResponseBody;
 

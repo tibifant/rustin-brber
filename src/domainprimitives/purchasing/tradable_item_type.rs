@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum TradableItemTypeDto {
+pub enum TradableItemType {
     ITEM,
     UPGRADE,
     RESTORATION,

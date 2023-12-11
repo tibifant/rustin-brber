@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::eventinfrastructure::map::dto::resource_type_dto::ResourceTypeDto;
+use crate::domainprimitives::location::mineable_resource_type::MineableResourceType;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum RobotLevel {
@@ -140,14 +140,14 @@ impl RobotLevel {
             RobotLevel::LEVEL5 => 40,
         }
     }
-    pub fn get_mineable_resource_for_level(&self) -> ResourceTypeDto {
+    pub fn get_mineable_resource_for_level(&self) -> MineableResourceType {
         match self {
-            RobotLevel::LEVEL0 => ResourceTypeDto::COAL,
-            RobotLevel::LEVEL1 => ResourceTypeDto::IRON,
-            RobotLevel::LEVEL2 => ResourceTypeDto::GEM,
-            RobotLevel::LEVEL3 => ResourceTypeDto::GOLD,
-            RobotLevel::LEVEL4 => ResourceTypeDto::PLATIN,
-            RobotLevel::LEVEL5 => ResourceTypeDto::PLATIN,
+            RobotLevel::LEVEL0 => MineableResourceType::COAL,
+            RobotLevel::LEVEL1 => MineableResourceType::IRON,
+            RobotLevel::LEVEL2 => MineableResourceType::GEM,
+            RobotLevel::LEVEL3 => MineableResourceType::GOLD,
+            RobotLevel::LEVEL4 => MineableResourceType::PLATIN,
+            RobotLevel::LEVEL5 => MineableResourceType::PLATIN,
         }
     }
 

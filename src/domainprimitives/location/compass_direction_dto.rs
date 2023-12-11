@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum CompassDirectionDto {
+pub enum CompassDirection {
     NORTH,
     EAST,
     SOUTH,

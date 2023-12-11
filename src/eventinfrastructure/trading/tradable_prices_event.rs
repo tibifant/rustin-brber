@@ -1,10 +1,9 @@
 use serde::Deserialize;
-
-use crate::eventinfrastructure::trading::dto::tradable_item_dto::TradableItemDto;
+use crate::domainprimitives::purchasing::tradable_item::TradableItem;
 
 #[derive(Debug)]
 pub struct TradablePricesEvent {
-    pub items: Vec<TradableItemDto>,
+    pub items: Vec<TradableItem>,
 }
 
 impl<'de> Deserialize<'de> for TradablePricesEvent {
@@ -12,7 +11,7 @@ impl<'de> Deserialize<'de> for TradablePricesEvent {
         where
             D: serde::Deserializer<'de>,
     {
-        let items = Vec::<TradableItemDto>::deserialize(deserializer)?;
+        let items = Vec::<TradableItem>::deserialize(deserializer)?;
         Ok(TradablePricesEvent { items })
     }
 }

@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
+use crate::domainprimitives::purchasing::tradable_item_type::TradableItemType;
 
-use crate::eventinfrastructure::trading::dto::tradable_item_type_dto::TradableItemTypeDto;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct TradableItemDto {
+pub struct TradableItem {
     pub name: String,
     pub price: u16,
     #[serde(rename = "type")]
-    pub tradable_type: TradableItemTypeDto,
+    pub tradable_type: TradableItemType,
 }

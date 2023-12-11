@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use tracing::{error, info};
+use crate::domainprimitives::command::command::Command;
 
 use crate::eventinfrastructure::event_handler::EventHandler;
 use crate::eventinfrastructure::game::game_status_event::GameStatusEvent;
 use crate::rest::game_service_rest_adapter::{GameServiceRestAdapterTrait};
 use crate::rest::game_service_rest_adapter_impl::GameStatus;
-use crate::rest::request::command::command::Command;
 
 #[derive(Debug)]
 pub struct GameStatusEventHandler {
@@ -60,7 +60,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_game_status_event_handler_calls_game_service_Rest_Adapter_to_join_game_on_created_game_Event() {
+    async fn test_game_status_event_handler_calls_game_service_rest_adapter_to_join_game_on_created_game_event() {
         let mut game_service_rest_adapter = MockGameServiceRestAdapterTrait::new();
         game_service_rest_adapter.expect_join_game().times(1).returning(|_| Ok(true));
         let game_status_event_handler = GameStatusEventHandler::new(Arc::new(game_service_rest_adapter));

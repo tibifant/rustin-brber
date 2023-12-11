@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use crate::eventinfrastructure::map::dto::resource_type_dto::ResourceTypeDto;
+use crate::domainprimitives::location::mineable_resource_type::MineableResourceType;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct PlanetResourceDto{
-    pub resource_type: ResourceTypeDto,
+pub struct MineableResource {
+    pub resource_type: MineableResourceType,
     pub max_amount: u32,
     pub current_amount: u32
 }
