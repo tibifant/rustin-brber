@@ -1,0 +1,37 @@
+name: "Player-Skeleton-Rust"
+replicas: 1
+image:
+  name: "registry.gitlab.com/the-microservice-dungeon/player-teams/skeletons/player-rust"
+  tag: "latest"
+  imagePullPolicy: "Always"
+serviceName: "Player-Skeleton-Rust"
+port: 8080
+targetPort: 8090
+lbNodePort: 31090
+env:
+  - name: GAME_SERVICE_HOST
+    value: "http://game-service.game"
+  - name: GAME_SERVICE_PORT
+    value: "8080"
+  - name: RABBITMQ_USERNAME
+    value: "admin"
+  - name: RABBITMQ_PASSWORD
+    value: "admin"
+  - name: RABBITMQ_HOST
+    value: "rabbitmq-service.rabbitmq"
+  - name: RABBITMQ_PORT
+    value: "5672"
+  - name: PLAYER_NAME
+    value: "Player-Skeleton-Rust"
+  - name: PLAYER_EMAIL
+    value: "player-skeleton-rust@test.de"
+  - name: RUST_LOG
+    value: "INFO"
+  - name: DEV_MODE
+    value: "false"
+
+ingress:
+  enabled: true
+  hostname: player-skeleton-rust.dungeon-space.de
+  path: /
+  classname: traefik

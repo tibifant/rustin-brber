@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helm-chart.fullname" . }}-deployment
+  labels:
+    {{- include "helm-chart.labels" . | nindent 4 }}
+spec:
+  replicas : {{ .Values.replicas | int}}
+  selector:
+    matchLabels:
+      app:  {{.Values.name}}
+  template:
+    metadata:
+      labels:
+        app: {{.Values.name}}
+    spec:
+      containers:
+        - name: {{.Values.name}}
+          {{- if .Values.image.tag}}
+          image: {{.Values.image.name}}:{{.Values.image.tag}}
+          {{- else}}
+          image: {{.Values.image.name}}:latest
+          {{- end}}
+          imagePullPolicy: {{.Values.image.imagePullPolicy}}
+          ports:
+            - containerPort: {{.Values.port | int}}
+              protocol: TCP
+              name: {{.Values.portName}}
+          {{- if .Values.resources}}
+          resources:
+            {{- toYaml .Values.resources | nindent 10}}
+          {{- end}}
+          {{- if .Values.livenessProbe}}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 10}}
+          {{- end}}
+          {{- if .Values.readinessProbe}}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 10}}
+          {{- end}}
+          {{- if .Values.env}}
+          env:
+          {{- toYaml .Values.env | nindent 8}}
+          {{- end}}

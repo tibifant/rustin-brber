@@ -7,5 +7,5 @@ pub struct RobotResourceInventoryDto {
     pub iron: u16,
     pub gold: u16,
     pub gem: u16,
-    pub platin: u16
+    pub platin: u16,
 }

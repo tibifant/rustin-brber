@@ -1,11 +1,11 @@
-pub mod robots_revealed_event;
-mod robot_level;
-pub mod robot_upgraded_event;
 mod dto;
 pub mod robot_attacked_event;
+mod robot_level;
 pub mod robot_moved_event;
 pub mod robot_regenerated_event;
 pub mod robot_resource_mined_event;
 pub mod robot_resource_removed_event;
 pub mod robot_restored_attributes_event;
 pub mod robot_spawned_event;
+pub mod robot_upgraded_event;
+pub mod robots_revealed_event;

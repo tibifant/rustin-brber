@@ -1,0 +1,16 @@
+{{- if (not .Values.ingress.enabled) or .Values.loadbalancer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.serviceName }}-lb
+spec:
+  selector:
+    app: {{ .Values.name }}
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: {{ .Values.loadbalancer.NodePort }}
+      targetPort: {{ .Values.port }}
+      nodePort: {{ .Values.loadbalancer.NodePort }}
+{{- end }}
+

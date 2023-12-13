@@ -1,16 +1,18 @@
 mod config;
-mod rest;
-mod dungeon_player_error;
-mod player;
+mod domainprimitives;
 mod dungeon_player_startup_handler;
 mod eventinfrastructure;
-
-mod domainprimitives;
+mod game;
+mod player;
+mod rest;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    let mut startup_handler = dungeon_player_startup_handler::DungeonPlayerStartupHandler::new().await;
+    let mut startup_handler =
+        dungeon_player_startup_handler::DungeonPlayerStartupHandler::new().await;
     startup_handler.start().await;
-    tokio::signal::ctrl_c().await.expect("Failed to listen for CTRL-C");
+    tokio::signal::ctrl_c()
+        .await
+        .expect("Failed to listen for CTRL-C");
 }

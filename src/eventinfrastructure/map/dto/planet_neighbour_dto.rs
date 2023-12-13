@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use crate::domainprimitives::location::compass_direction_dto::CompassDirection;
 
+use crate::domainprimitives::location::compass_direction_dto::CompassDirection;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PlanetNeighbourDto {
@@ -9,4 +9,3 @@ pub struct PlanetNeighbourDto {
     #[serde(rename = "direction")]
     pub compass_direction: CompassDirection,
 }
-

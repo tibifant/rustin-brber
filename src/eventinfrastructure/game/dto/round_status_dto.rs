@@ -6,5 +6,5 @@ pub enum RoundStatusDto {
     Started,
     #[serde(rename = "command input ended")]
     CommandInputEnded,
-    Ended
+    Ended,
 }

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct RobotAttackInfoDto {
     pub robot_id: String,
-    pub available_health : u16,
-    pub available_energy : u16,
-    pub alive : bool,
+    pub available_health: u16,
+    pub available_energy: u16,
+    pub alive: bool,
 }

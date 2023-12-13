@@ -1,11 +1,11 @@
-pub mod game_event_header;
-mod game_event;
-pub mod rabbitmq;
+pub mod event_dispatcher;
+pub mod event_handler;
 pub mod game;
+mod game_error_event;
+mod game_event;
+mod game_event_body_type;
+pub mod game_event_header;
 pub mod map;
+pub mod rabbitmq;
 pub mod robot;
 pub mod trading;
-mod game_event_body_type;
-pub mod event_handler;
-mod game_error_event;
-pub mod event_dispatcher;

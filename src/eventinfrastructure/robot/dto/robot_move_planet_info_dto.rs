@@ -4,6 +4,6 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct RobotMovePlanetInfoDto {
     #[serde(rename = "id")]
-    pub planet_id : String,
-    pub movement_difficulty : u8,
+    pub planet_id: String,
+    pub movement_difficulty: u8,
 }

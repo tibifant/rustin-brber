@@ -5,7 +5,7 @@ use crate::eventinfrastructure::robot::dto::robot_attributes_dto::RobotAttribute
 use crate::eventinfrastructure::robot::dto::robot_inventory_dto::RobotInventoryDto;
 use crate::eventinfrastructure::robot::robot_level::RobotsRevealedLevelDto;
 
-#[derive(Serialize, Deserialize,Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RobotDto {
     #[serde(rename = "id")]
@@ -18,5 +18,5 @@ pub struct RobotDto {
     #[serde(flatten)]
     pub robot_attributes: RobotAttributesDto,
     #[serde(flatten)]
-    pub robot_levels : RobotsRevealedLevelDto,
+    pub robot_levels: RobotsRevealedLevelDto,
 }

@@ -4,7 +4,7 @@ use crate::domainprimitives::purchasing::robot_upgrade_type::RobotUpgradeType;
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct RobotUpgrade {
     pub upgrade_type: RobotUpgradeType,
-    pub level : RobotLevel,
+    pub level: RobotLevel,
 }
 
 impl RobotUpgrade {
@@ -59,6 +59,7 @@ impl RobotUpgrade {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_get_next_level() {
         let upgrade = RobotUpgrade::base_for_type(RobotUpgradeType::Health);
@@ -67,26 +68,33 @@ mod tests {
 
     #[test]
     fn test_get_next_level_2() {
-        let upgrade = RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL2);
+        let upgrade =
+            RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL2);
         assert_eq!(upgrade.get_next_level().unwrap(), RobotLevel::LEVEL3);
     }
 
     #[test]
     fn get_for_type_and_level() {
-        let upgrade = RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL2);
+        let upgrade =
+            RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL2);
         assert_eq!(upgrade.upgrade_type, RobotUpgradeType::Health);
         assert_eq!(upgrade.level, RobotLevel::LEVEL2);
     }
 
     #[test]
     fn test_get_next_level_max() {
-        let upgrade = RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL5);
-        assert_eq!(upgrade.get_next_level().unwrap_err(), RobotLevelError::NoHigherLevelThanMaximumLevel);
+        let upgrade =
+            RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL5);
+        assert_eq!(
+            upgrade.get_next_level().unwrap_err(),
+            RobotLevelError::NoHigherLevelThanMaximumLevel
+        );
     }
 
     #[test]
     fn test_to_string_for_command() {
-        let upgrade = RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL5);
+        let upgrade =
+            RobotUpgrade::for_type_and_level(RobotUpgradeType::Health, RobotLevel::LEVEL5);
         assert_eq!(upgrade.to_string_for_command(), "HEALTH_5");
     }
 }

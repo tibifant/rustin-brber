@@ -27,7 +27,7 @@ pub enum GameEventBodyType {
     //Status Events
     GameStatus(GameStatusEvent),
     RoundStatus(RoundStatusEvent),
-    
+
     //Trading/Player Events
     TradablePrices(TradablePricesEvent),
     BankAccountInitialized(BankAccountInitializedEvent),
@@ -46,10 +46,10 @@ pub enum GameEventBodyType {
     RobotResourceRemoved(RobotResourceRemovedEvent),
     RobotRestoredAttributes(RobotRestoredAttributesEvent),
     RobotsRevealed(RobotsRevealedEvent),
+
     //Map
     PlanetDiscovered(PlanetDiscoveredEvent),
     PlanetResourceMined(PlanetResourceMinedEvent),
     #[serde(alias = "error")]
-    ErrorEvent(GameErrorEvent)
+    ErrorEvent(GameErrorEvent),
 }
-

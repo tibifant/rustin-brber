@@ -1,0 +1,61 @@
+variables:
+  CONTAINER_IMAGE_NAME: Player-Skeleton-Rust
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:latest
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+  PATH_TO_CHART: "helm-chart"
+  CHART_NAME: "Player-Skeleton-Rust"
+
+
+include:
+  - project: "the-microservice-dungeon/devops-team/common-ci-cd"
+    ref: "main"
+    file: "helm/package-publish.yaml"
+
+
+stages:
+  - test
+  - build
+  - build_container_image
+  - helm-package-publish
+
+test:
+  stage: test
+  image: rust:latest
+  script:
+    - cargo test
+
+build:
+  stage: build
+  image: rust:latest
+  script:
+    - cargo build --release
+  only:
+    - master
+  artifacts:
+    paths:
+      - ./player-skeleton-rust/target/release/player-skeleton-rust
+
+
+build_container_image:
+  stage: build_container_image
+  image:
+    name: gcr.io/kaniko-project/executor:v1.14.0-debug
+    entrypoint: [""]
+  services:
+    - docker:dind
+  script:
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}"
+      --dockerfile "${CI_PROJECT_DIR}/Dockerfile"
+      --destination "$IMAGE_TAG"
+      --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
+      --destination "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}"
+
+
+helm-package-publish:
+  rules:
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      changes:
+        - ${PATH_TO_CHART}/**/*
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always

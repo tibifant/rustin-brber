@@ -13,7 +13,3 @@ pub struct RoundStatusEvent {
     pub imprecise_timing_predictions: ImpreciseTimingDto,
     pub imprecise_timings: ImpreciseTimingDto,
 }
-
-
-
-

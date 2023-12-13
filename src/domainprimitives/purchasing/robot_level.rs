@@ -15,8 +15,8 @@ pub enum RobotLevel {
 
 impl<'de> Deserialize<'de> for RobotLevel {
     fn deserialize<D>(deserializer: D) -> Result<RobotLevel, D::Error>
-        where
-            D: serde::Deserializer<'de>,
+    where
+        D: serde::Deserializer<'de>,
     {
         let s: String = Deserialize::deserialize(deserializer)?;
         match s.as_str() {
@@ -26,7 +26,10 @@ impl<'de> Deserialize<'de> for RobotLevel {
             "3" => Ok(RobotLevel::LEVEL3),
             "4" => Ok(RobotLevel::LEVEL4),
             "5" => Ok(RobotLevel::LEVEL5),
-            s => Err(serde::de::Error::custom(format!("Parse Error Invalid robot level: {} can only be between 0-5", s))),
+            s => Err(serde::de::Error::custom(format!(
+                "Parse Error Invalid robot level: {} can only be between 0-5",
+                s
+            ))),
         }
     }
 }
@@ -34,7 +37,7 @@ impl<'de> Deserialize<'de> for RobotLevel {
 impl Serialize for RobotLevel {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer
+        S: serde::Serializer,
     {
         match self {
             RobotLevel::LEVEL0 => serializer.serialize_str("0"),
@@ -45,16 +48,14 @@ impl Serialize for RobotLevel {
             RobotLevel::LEVEL5 => serializer.serialize_str("5"),
         }
     }
-
 }
 
 #[derive(Debug, Error, PartialEq)]
 pub enum RobotLevelError {
     #[error("Cannot upgrade robot level any further")]
-    NoHigherLevelThanMaximumLevel
+    NoHigherLevelThanMaximumLevel,
 }
 impl RobotLevel {
-
     pub fn get_minimum_level() -> RobotLevel {
         RobotLevel::LEVEL0
     }
@@ -76,7 +77,7 @@ impl RobotLevel {
             _ => false,
         }
     }
-    pub fn get_next_level(&self) -> Result<RobotLevel, RobotLevelError>{
+    pub fn get_next_level(&self) -> Result<RobotLevel, RobotLevelError> {
         match self {
             RobotLevel::LEVEL0 => Ok(RobotLevel::LEVEL1),
             RobotLevel::LEVEL1 => Ok(RobotLevel::LEVEL2),
@@ -183,7 +184,7 @@ mod test {
         assert_eq!(RobotLevel::LEVEL5.get_max_health_value_for_level(), 500);
     }
 
-    # [test]
+    #[test]
     fn test_max_energy_values() {
         assert_eq!(RobotLevel::LEVEL0.get_max_energy_value_for_level(), 20);
         assert_eq!(RobotLevel::LEVEL1.get_max_energy_value_for_level(), 30);

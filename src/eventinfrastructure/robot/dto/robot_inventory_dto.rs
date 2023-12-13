@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 
+use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 use crate::eventinfrastructure::robot::dto::robot_resource_inventory_dto::RobotResourceInventoryDto;
 
 #[derive(Serialize, Deserialize, Debug)]

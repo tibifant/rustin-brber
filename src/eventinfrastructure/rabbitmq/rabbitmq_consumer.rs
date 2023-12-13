@@ -1,11 +1,10 @@
-
-
 use amqprs::{BasicProperties, Deliver, FieldValue, ShortStr};
 use amqprs::channel::{BasicAckArguments, Channel};
 use amqprs::consumer::AsyncConsumer;
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use tracing::error;
+
 use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
 use crate::eventinfrastructure::game_event::GameEvent;
 use crate::eventinfrastructure::game_event_body_type::GameEventBodyType;
@@ -18,20 +17,34 @@ pub struct RabbitMQConsumer {
     event_dispatcher: EventDispatcher,
 }
 
-
 impl RabbitMQConsumer {
     pub fn new(no_ack: bool, event_dispatcher: EventDispatcher) -> Self {
-        Self { no_ack, event_dispatcher }
+        Self {
+            no_ack,
+            event_dispatcher,
+        }
     }
 
     fn parse_header(&self, properties: BasicProperties) -> Result<GameEventHeader, ParseError> {
-        let headers = properties.headers().ok_or_else(|| ParseError::MissingField("Headers were non-existent in properties!".to_string()))?;
+        let headers = properties.headers().ok_or_else(|| {
+            ParseError::MissingField("Headers were non-existent in properties!".to_string())
+        })?;
 
         let fetch_field = |field: &str| {
-            let field_name = ShortStr::try_from(field)
-                .map_err(|_| ParseError::InvalidType(format!("Fieldname '{}' was not able to be parsed into a ShortStr", field)))?;
-            headers.get(&field_name)
-                .ok_or_else(|| ParseError::MissingField(format!("Header with key {} was not found in the FieldTable!", field.to_string())))
+            let field_name = ShortStr::try_from(field).map_err(|_| {
+                ParseError::InvalidType(format!(
+                    "Fieldname '{}' was not able to be parsed into a ShortStr",
+                    field
+                ))
+            })?;
+            headers
+                .get(&field_name)
+                .ok_or_else(|| {
+                    ParseError::MissingField(format!(
+                        "Header with key {} was not found in the FieldTable!",
+                        field.to_string()
+                    ))
+                })
                 .and_then(|field_value| self.extract_string_from_byte_array(field_value))
         };
 
@@ -46,12 +59,19 @@ impl RabbitMQConsumer {
         })
     }
 
-
     fn extract_string_from_byte_array(&self, value: &FieldValue) -> Result<String, ParseError> {
         if let FieldValue::x(byte_array) = value {
-            String::from_utf8(byte_array.clone().into()).or_else(|e| Err(ParseError::InvalidType(format!("Could not parse byte array to string: {}", e))))
+            String::from_utf8(byte_array.clone().into()).or_else(|e| {
+                Err(ParseError::InvalidType(format!(
+                    "Could not parse byte array to string: {}",
+                    e
+                )))
+            })
         } else {
-            Err(ParseError::InvalidType(format!("Expected a ByteArray as type of header value but was: {:?}", value)))
+            Err(ParseError::InvalidType(format!(
+                "Expected a ByteArray as type of header value but was: {:?}",
+                value
+            )))
         }
     }
 
@@ -59,7 +79,6 @@ impl RabbitMQConsumer {
         self.event_dispatcher.dispatch(game_event).await;
     }
 }
-
 
 #[async_trait]
 impl AsyncConsumer for RabbitMQConsumer {
@@ -92,7 +111,12 @@ impl AsyncConsumer for RabbitMQConsumer {
         let game_event_type: GameEventBodyType = match serde_json::from_value(game_event_json) {
             Ok(game_event) => game_event,
             Err(_) => {
-                let error: ParseError = ParseError::InvalidType(format!("{:?}\n{}", header.event_type, serde_json::to_string_pretty(&body_json).expect("Could not serialize body to string")));
+                let error: ParseError = ParseError::InvalidType(format!(
+                    "{:?}\n{}",
+                    header.event_type,
+                    serde_json::to_string_pretty(&body_json)
+                        .expect("Could not serialize body to string")
+                ));
                 error!("{}", error);
                 return;
             }
@@ -123,20 +147,44 @@ mod test {
     use super::*;
 
     fn get_rabbitmq_consumer() -> RabbitMQConsumer {
-        RabbitMQConsumer::new(false, EventDispatcher::new(Arc::new(GameServiceRestAdapterImpl::new())))
+        RabbitMQConsumer::new(
+            false,
+            EventDispatcher::new(Arc::new(GameServiceRestAdapterImpl::new())),
+        )
     }
 
     #[test]
     fn test_parse_header() {
         let mut headers = FieldTable::new();
 
-        headers.insert(FieldName::try_from("eventId").unwrap(), FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("version").unwrap(), FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("playerId").unwrap(), FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("timestamp").unwrap(), FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("transactionId").unwrap(), FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
+        headers.insert(
+            FieldName::try_from("eventId").unwrap(),
+            FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("version").unwrap(),
+            FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("playerId").unwrap(),
+            FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("timestamp").unwrap(),
+            FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("transactionId").unwrap(),
+            FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("type").unwrap(),
+            FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("kafka-topic").unwrap(),
+            FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()),
+        );
         let properties = BasicProperties::default().with_headers(headers).to_owned();
         let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties).unwrap();
@@ -153,19 +201,41 @@ mod test {
     fn test_parse_header_missing_event_id() {
         let mut headers = FieldTable::new();
 
-        headers.insert(FieldName::try_from("version").unwrap(), FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("playerId").unwrap(), FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("timestamp").unwrap(), FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("transactionId").unwrap(), FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
+        headers.insert(
+            FieldName::try_from("version").unwrap(),
+            FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("playerId").unwrap(),
+            FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("timestamp").unwrap(),
+            FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("transactionId").unwrap(),
+            FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("type").unwrap(),
+            FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("kafka-topic").unwrap(),
+            FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()),
+        );
         let properties = BasicProperties::default().with_headers(headers).to_owned();
         let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header.unwrap_err() {
             ParseError::MissingField(field) => assert!(true),
-            other => assert!(false, "Expected ParseError::MissingField but got {:?}", other),
+            other => assert!(
+                false,
+                "Expected ParseError::MissingField but got {:?}",
+                other
+            ),
         }
     }
 
@@ -173,19 +243,41 @@ mod test {
     fn test_parse_header_missing_version() {
         let mut headers = FieldTable::new();
 
-        headers.insert(FieldName::try_from("eventId").unwrap(), FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("playerId").unwrap(), FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("timestamp").unwrap(), FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("transactionId").unwrap(), FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
+        headers.insert(
+            FieldName::try_from("eventId").unwrap(),
+            FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("playerId").unwrap(),
+            FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("timestamp").unwrap(),
+            FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("transactionId").unwrap(),
+            FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("type").unwrap(),
+            FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("kafka-topic").unwrap(),
+            FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()),
+        );
         let properties = BasicProperties::default().with_headers(headers).to_owned();
         let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header {
             Err(ParseError::MissingField(field)) => assert!(true),
-            other => assert!(false, "Expected ParseError::MissingField but got {:?}", other),
+            other => assert!(
+                false,
+                "Expected ParseError::MissingField but got {:?}",
+                other
+            ),
         }
     }
 
@@ -193,19 +285,41 @@ mod test {
     fn test_parse_header_missing_player_id() {
         let mut headers = FieldTable::new();
 
-        headers.insert(FieldName::try_from("eventId").unwrap(), FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("version").unwrap(), FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("timestamp").unwrap(), FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("transactionId").unwrap(), FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
+        headers.insert(
+            FieldName::try_from("eventId").unwrap(),
+            FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("version").unwrap(),
+            FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("timestamp").unwrap(),
+            FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("transactionId").unwrap(),
+            FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("type").unwrap(),
+            FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("kafka-topic").unwrap(),
+            FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()),
+        );
         let properties = BasicProperties::default().with_headers(headers).to_owned();
         let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header {
             Err(ParseError::MissingField(field)) => assert!(true),
-            other => assert!(false, "Expected ParseError::MissingField but got {:?}", other),
+            other => assert!(
+                false,
+                "Expected ParseError::MissingField but got {:?}",
+                other
+            ),
         }
     }
 
@@ -213,19 +327,41 @@ mod test {
     fn test_parse_header_missing_timestamp() {
         let mut headers = FieldTable::new();
 
-        headers.insert(FieldName::try_from("eventId").unwrap(), FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("version").unwrap(), FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("playerId").unwrap(), FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("transactionId").unwrap(), FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
+        headers.insert(
+            FieldName::try_from("eventId").unwrap(),
+            FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("version").unwrap(),
+            FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("playerId").unwrap(),
+            FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("transactionId").unwrap(),
+            FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("type").unwrap(),
+            FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("kafka-topic").unwrap(),
+            FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()),
+        );
         let properties = BasicProperties::default().with_headers(headers).to_owned();
         let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header {
             Err(ParseError::MissingField(field)) => assert!(true),
-            other => assert!(false, "Expected ParseError::MissingField but got {:?}", other),
+            other => assert!(
+                false,
+                "Expected ParseError::MissingField but got {:?}",
+                other
+            ),
         }
     }
 
@@ -233,19 +369,41 @@ mod test {
     fn test_parse_header_missing_transaction_id() {
         let mut headers = FieldTable::new();
 
-        headers.insert(FieldName::try_from("eventId").unwrap(), FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("version").unwrap(), FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("playerId").unwrap(), FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("timestamp").unwrap(), FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("type").unwrap(), FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()));
-        headers.insert(FieldName::try_from("kafka-topic").unwrap(), FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()));
+        headers.insert(
+            FieldName::try_from("eventId").unwrap(),
+            FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("version").unwrap(),
+            FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("playerId").unwrap(),
+            FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("timestamp").unwrap(),
+            FieldValue::x("timestamp".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("type").unwrap(),
+            FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()),
+        );
+        headers.insert(
+            FieldName::try_from("kafka-topic").unwrap(),
+            FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()),
+        );
         let properties = BasicProperties::default().with_headers(headers).to_owned();
         let consumer = get_rabbitmq_consumer();
         let header = consumer.parse_header(properties);
         assert!(header.is_err());
         match header {
             Err(ParseError::MissingField(field)) => assert!(true),
-            other => assert!(false, "Expected ParseError::MissingField but got {:?}", other),
+            other => assert!(
+                false,
+                "Expected ParseError::MissingField but got {:?}",
+                other
+            ),
         }
     }
 }

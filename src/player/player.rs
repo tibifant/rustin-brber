@@ -15,7 +15,7 @@ pub struct Player {
 impl Player {
     pub fn new() -> Self {
         Self {
-            player_id : None,
+            player_id: None,
             name: CONFIG.player_name.clone(),
             email: CONFIG.player_email.clone(),
             player_exchange: format!("player-{}", CONFIG.player_name),

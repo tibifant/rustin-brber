@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize,Deserialize,Debug)]
-#[serde(rename="camelCase")]
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename = "camelCase")]
 pub struct GameErrorEvent {
     pub code: Option<String>,
     pub description: Option<String>,
