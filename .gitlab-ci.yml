@@ -16,7 +16,7 @@ stages:
   - test
   - build
   - build_container_image
-  - helm-package-publish
+  - helm
 
 test:
   stage: test

@@ -1,6 +1,6 @@
-use amqprs::{BasicProperties, Deliver, FieldValue, ShortStr};
 use amqprs::channel::{BasicAckArguments, Channel};
 use amqprs::consumer::AsyncConsumer;
+use amqprs::{BasicProperties, Deliver, FieldValue, ShortStr};
 use async_trait::async_trait;
 use serde_json::{json, Value};
 use tracing::error;
