@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use crate::domainprimitives::errors::DomainPrimitiveError;
 
 #[derive(Debug, PartialEq, Eq, Hash)]

@@ -38,13 +38,13 @@ impl EventHandler<GameStatusEvent> for GameStatusEventHandler {
             GameStatus::STARTED => {
                 info!("Game {} Status: Started", event.game_id);
                 let robots_you_can_buy_in_first_round: u16 = 5;
-                self
-                    .game_service_rest_adapter
+                self.game_service_rest_adapter
                     .send_command(Command::create_robot_purchase_command(
                         self.game_service_rest_adapter.get_player_id().unwrap(),
                         robots_you_can_buy_in_first_round,
                     ))
-                    .await;
+                    .await
+                    .expect("Could not send robot purchase command");
             }
             GameStatus::ENDED => {
                 info!("Game {} Status: Ended", event.game_id)

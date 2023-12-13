@@ -31,7 +31,7 @@ impl MineableResource {
         if self.is_empty() {
             return Ok(additional_resource);
         }
-        if (self.resource_type != additional_resource.resource_type) {
+        if self.resource_type != additional_resource.resource_type {
             return Err(DomainPrimitiveError::InvalidResourceType(
                 self.resource_type,
                 additional_resource.resource_type,

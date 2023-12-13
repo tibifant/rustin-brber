@@ -1,5 +1,5 @@
 use amqprs::callbacks::{DefaultChannelCallback, DefaultConnectionCallback};
-use amqprs::channel::{BasicConsumeArguments, Channel};
+use amqprs::channel::{BasicConsumeArguments, Channel, QueuePurgeArguments};
 use amqprs::connection::{Connection, OpenConnectionArguments};
 
 use crate::config::CONFIG;
@@ -43,6 +43,10 @@ impl RabbitMQConnectionHandler {
         })
     }
     pub async fn listen_for_events(&self, player: &Player, event_dispatcher: EventDispatcher) {
+        self.channel
+            .queue_purge(QueuePurgeArguments::new(&player.player_queue))
+            .await
+            .unwrap();
         self.channel
             .basic_consume(
                 RabbitMQConsumer::new(false, event_dispatcher),

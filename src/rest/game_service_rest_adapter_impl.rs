@@ -3,7 +3,6 @@ use std::fmt::Debug;
 
 use async_trait::async_trait;
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use crate::config::CONFIG;
@@ -334,8 +333,8 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
 mod tests {
     use std::ops::Deref;
 
-    use wiremock::{Mock, MockServer, ResponseTemplate};
     use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::*;
 
