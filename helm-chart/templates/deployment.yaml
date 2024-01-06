@@ -1,44 +1,55 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "helm-chart.fullname" . }}-deployment
+  name: {{ .Values.name }}-deployment
+  namespace: {{ .Values.name }}
   labels:
-    {{- include "helm-chart.labels" . | nindent 4 }}
+    app: {{ .Values.name }}
 spec:
-  replicas : {{ .Values.replicas | int}}
+  replicas: 1
   selector:
     matchLabels:
-      app:  {{.Values.name}}
+      app: {{ .Values.name }}
   template:
     metadata:
       labels:
-        app: {{.Values.name}}
+        app: {{ .Values.name }}
     spec:
       containers:
-        - name: {{.Values.name}}
-          {{- if .Values.image.tag}}
-          image: {{.Values.image.name}}:{{.Values.image.tag}}
-          {{- else}}
-          image: {{.Values.image.name}}:latest
-          {{- end}}
-          imagePullPolicy: {{.Values.image.imagePullPolicy}}
-          ports:
-            - containerPort: {{.Values.port | int}}
-              protocol: TCP
-              name: {{.Values.portName}}
-          {{- if .Values.resources}}
-          resources:
-            {{- toYaml .Values.resources | nindent 10}}
-          {{- end}}
-          {{- if .Values.livenessProbe}}
-          livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 10}}
-          {{- end}}
-          {{- if .Values.readinessProbe}}
-          readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 10}}
-          {{- end}}
-          {{- if .Values.env}}
+        - name: {{ .Values.name }}
+          {{- if .Values.image.tag }}
+          image: {{ .Values.image.name }}:{{ .Values.image.tag }}
+          {{- else }}
+          image: {{ .Values.image.name }}:latest
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.imagePullPolicy }}
           env:
-          {{- toYaml .Values.env | nindent 8}}
-          {{- end}}
+            - name: DATA_ENDPOINT_PORT
+              value: {{ .Values.env.DATA_ENDPOINT_PORT | int }}
+            - name: GAME_HOST
+              value: {{ .Values.env.GAME_HOST }}
+            - name: GAME_PORT
+              value: {{ .Values.env.GAME_PORT | int }}
+            - name: RABBITMQ_HOST
+              value: {{ .Values.env.RABBITMQ_HOST }}
+            - name: RABBITMQ_PORT
+              value: {{ .Values.env.RABBITMQ_PORT | int }}
+            - name: RABBITMQ_USERNAME
+              value: {{ .Values.env.RABBITMQ_USERNAME }}
+            - name: RABBITMQ_PASSWORD
+              value: {{ .Values.env.RABBITMQ_PASSWORD }}
+            - name: PLAYER_NAME
+              value: {{ .Values.env.PLAYER_NAME }}
+            - name: PLAYER_EMAIL
+              value: {{ .Values.env.PLAYER_EMAIL }}
+            - name: DEV_MODE
+              value: {{ .Values.env.DEV_MODE }}
+            - name: RUST_LOG
+              value: {{ .Values.env.RUST_LOG }}
+          volumeMounts:
+            - mountPath: /app/logs
+              name: logs-volume
+      volumes:
+        - name: logs-volume
+          emptyDir:
+            sizeLimit: 500Mi

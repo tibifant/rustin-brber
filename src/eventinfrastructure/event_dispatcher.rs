@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use crate::eventinfrastructure::event_handler::EventHandler;
-use crate::eventinfrastructure::game::handler::game_status_event_handler::GameStatusEventHandler;
-use crate::eventinfrastructure::game::handler::round_status_event_handler::RoundStatusEventHandler;
+
 use crate::eventinfrastructure::game_event::GameEvent;
 use crate::eventinfrastructure::game_event_body_type::GameEventBodyType;
+use crate::game::application::game_status_event_handler::GameStatusEventHandler;
+use crate::game::application::round_status_event_handler::RoundStatusEventHandler;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
 pub struct EventDispatcher {
@@ -23,7 +24,7 @@ impl EventDispatcher {
             round_status_event_handler: Arc::new(RoundStatusEventHandler::new(
                 game_service_rest_adapter.clone(),
             )),
-            //TODO: add Event Handler for remaining
+            //TODO: add Event Handler for remaining Events
         }
     }
     pub async fn dispatch(&self, event: GameEvent) {

@@ -1,37 +1,33 @@
-name: "Player-Skeleton-Rust"
+name: "Player-Skeleton-Rust" #TODO: Change this to the name of your Player Application
 replicas: 1
+
+loadBalancerNodePort: 31090
+
 image:
-  name: "registry.gitlab.com/the-microservice-dungeon/player-teams/skeletons/player-rust"
+  name: "registry.gitlab.com/the-microservice-dungeon/player-teams/skeletons/player-rust" #TODO: Change this to your image path
   tag: "latest"
   imagePullPolicy: "Always"
-serviceName: "Player-Skeleton-Rust"
+serviceName: "Player-Skeleton-Rust" #TODO: Change this to the name of your Player Application
+
+lbTargetPort: 8090
 port: 8080
-targetPort: 8090
 lbNodePort: 31090
+
 env:
-  - name: GAME_SERVICE_HOST
-    value: "http://game-service.game"
-  - name: GAME_SERVICE_PORT
-    value: "8080"
-  - name: RABBITMQ_USERNAME
-    value: "admin"
-  - name: RABBITMQ_PASSWORD
-    value: "admin"
-  - name: RABBITMQ_HOST
-    value: "rabbitmq-service.rabbitmq"
-  - name: RABBITMQ_PORT
-    value: "5672"
-  - name: PLAYER_NAME
-    value: "Player-Skeleton-Rust"
-  - name: PLAYER_EMAIL
-    value: "player-skeleton-rust@test.de"
-  - name: RUST_LOG
-    value: "INFO"
-  - name: DEV_MODE
-    value: "false"
+  DATA_ENDPOINT_PORT: "8090"
+  GAME_HOST: "http://game-service.game" #TODO: Substitute with correct game host
+  GAME_PORT: "8080"
+  RABBITMQ_USERNAME: "admin"
+  RABBITMQ_PASSWORD: "admin"
+  RABBITMQ_HOST: "rabbitmq-service.rabbitmq" #TODO: Substitute with correct rabbitmq host
+  RABBITMQ_PORT: "5672"
+  PLAYER_NAME: "Player-Skeleton-Rust" #TODO: Substitute with correct player name
+  PLAYER_EMAIL: "player-skeleton-rust@test.com" #TODO: Substitute with correct player email
+  RUST_LOG: "INFO"
+  DEV_MODE: "false"
 
 ingress:
   enabled: true
-  hostname: player-skeleton-rust.dungeon-space.de
+  hostname: player-skeleton-rust.dungeon-space.de #TODO: Change this to your ingress hostname
   path: /
   classname: traefik

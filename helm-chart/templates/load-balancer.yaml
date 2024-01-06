@@ -1,4 +1,4 @@
-{{- if (not .Values.ingress.enabled) or .Values.loadbalancer.enabled }}
+{{- if .Values.ingress.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -9,8 +9,7 @@ spec:
   type: LoadBalancer
   ports:
     - protocol: TCP
-      port: {{ .Values.loadbalancer.NodePort }}
-      targetPort: {{ .Values.port }}
-      nodePort: {{ .Values.loadbalancer.NodePort }}
+      port: {{ .Values.loadBalancerNodePort }}
+      targetPort: {{ .Values.env.DATA_ENDPOINT_PORT | int }}
 {{- end }}
 

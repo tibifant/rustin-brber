@@ -42,11 +42,14 @@ impl RabbitMQConnectionHandler {
             channel,
         })
     }
-    pub async fn listen_for_events(&self, player: &Player, event_dispatcher: EventDispatcher) {
+
+    pub async fn purge_queue(&self, queue_name: &str) {
         self.channel
-            .queue_purge(QueuePurgeArguments::new(&player.player_queue))
+            .queue_purge(QueuePurgeArguments::new(queue_name))
             .await
-            .unwrap();
+            .expect("Failed to purge queue");
+    }
+    pub async fn listen_for_and_handle_events(&self, player: &Player, event_dispatcher: EventDispatcher) {
         self.channel
             .basic_consume(
                 RabbitMQConsumer::new(false, event_dispatcher),

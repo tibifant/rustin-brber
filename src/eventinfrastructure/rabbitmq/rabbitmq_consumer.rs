@@ -3,7 +3,7 @@ use amqprs::consumer::AsyncConsumer;
 use amqprs::{BasicProperties, Deliver, FieldValue, ShortStr};
 use async_trait::async_trait;
 use serde_json::{json, Value};
-use tracing::error;
+use tracing::{error, info};
 
 use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
 use crate::eventinfrastructure::game_event::GameEvent;
@@ -125,6 +125,7 @@ impl AsyncConsumer for RabbitMQConsumer {
             header,
             event_body: game_event_type,
         };
+        info!("Received event: {:?}", game_event);
         self.handle_event(game_event).await;
         if !self.no_ack {
             #[cfg(feature = "traces")]

@@ -22,7 +22,7 @@ pub trait GameServiceRestAdapterTrait: Send + Sync + Debug {
     async fn join_game(&self, game_id: &str) -> Result<bool, Box<dyn Error>>;
     async fn send_command(&self, command: Command) -> Result<CommandInfoResponse, Box<dyn Error>>;
     async fn register_player(&self) -> Result<Player, Box<dyn Error>>;
-
+    async fn patch_round_duration(&self, game_id: &str, round_duration_in_millis: u64) -> Result<(), Box<dyn Error>>;
     async fn fetch_player(&self) -> Result<Player, Box<dyn Error>>;
     async fn start_game(&self, game_id: &str) -> Result<(), Box<dyn Error>>;
     async fn end_all_existing_games(&self) -> Result<(), Box<dyn Error>>;

@@ -21,6 +21,7 @@ impl GameStatusEventHandler {
         }
     }
 }
+
 #[async_trait]
 impl EventHandler<GameStatusEvent> for GameStatusEventHandler {
     async fn handle(&self, event: GameStatusEvent) {
@@ -70,8 +71,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_game_status_event_handler_calls_game_service_rest_adapter_to_join_game_on_created_game_event(
-    ) {
+    async fn test_game_status_event_handler_calls_game_service_rest_adapter_to_join_game_on_created_game_event() {
         let mut game_service_rest_adapter = MockGameServiceRestAdapterTrait::new();
         game_service_rest_adapter
             .expect_join_game()

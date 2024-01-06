@@ -12,6 +12,7 @@ use crate::player::player::Player;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 use crate::rest::request::create_game_request_body::CreateGameRequestBody;
 use crate::rest::request::fetch_player_request_query::FetchPlayerRequestQuery;
+use crate::rest::request::patch_round_duration_request_body::PatchRoundDurationRequestBody;
 use crate::rest::request::register_player_request_body::RegisterPlayerRequestBody;
 use crate::rest::response::command_info_response::CommandInfoResponse;
 use crate::rest::response::created_game_info_response_body::CreatedGameInfoResponseBody;
@@ -31,7 +32,7 @@ impl GameServiceRestAdapterImpl {
     pub fn new() -> Self {
         Self {
             client: HttpClient::new(),
-            game_host: format!("{}:{}", CONFIG.game_service_host, CONFIG.game_service_port),
+            game_host: format!("{}:{}", CONFIG.game_host, CONFIG.game_port),
             player_id: None,
         }
     }
@@ -52,6 +53,7 @@ impl GameServiceRestAdapterImpl {
         }
     }
 }
+
 #[async_trait]
 impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
     fn get_player_id(&self) -> Option<String> {
@@ -297,7 +299,7 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
                     .await
                     .map_err(|e| error!("Couldn't start game {}", e))
                     .unwrap();
-                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
             }
             let response = self
                 .client
@@ -306,6 +308,8 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
                 .send()
                 .await
                 .map_err(GameServiceRestAdapterImpl::handle_reqwest_error)?;
+
+            tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
 
             match response.status() {
                 StatusCode::CREATED => {
@@ -323,6 +327,36 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
                 _ => {
                     error!("Game could not be ended: {:?}", game);
                 }
+            }
+        }
+        Ok(())
+    }
+
+    async fn patch_round_duration(&self, game_id: &str, round_duration_in_millis: u64) -> Result<(), Box<dyn Error>> {
+        let url = format!("{}/games/{}/duration", self.game_host, game_id);
+        let body = PatchRoundDurationRequestBody {
+            duration: round_duration_in_millis,
+        };
+        let response = self
+            .client
+            .async_client
+            .patch(&url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(GameServiceRestAdapterImpl::handle_reqwest_error)?;
+        match response.status() {
+            StatusCode::OK => {
+                info!("Round duration patched successfully to {}ms for {}!", round_duration_in_millis, game_id);
+            }
+            StatusCode::BAD_REQUEST => {
+                error!("Failed to patch round duration. Round duration must be greater than 0.");
+            }
+            StatusCode::NOT_FOUND => {
+                error!("Failed to patch round duration. Game {} could not be found.", game_id);
+            }
+            _ => {
+                error!("Unknown error occured when trying to patch round duration!");
             }
         }
         Ok(())

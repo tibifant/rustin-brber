@@ -1,5 +1,5 @@
 apiVersion: v2
-name: Player-Skeleton-Rust
+name: Player-Skeleton-Rust #TODO: Change this to the name of your Player Application
 description: A Player Skeleton written in Rust
 
 # A chart can be either an 'application' or a 'library' chart.
