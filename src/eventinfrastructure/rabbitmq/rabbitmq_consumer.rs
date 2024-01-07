@@ -143,14 +143,30 @@ mod test {
     use amqprs::{FieldName, FieldTable};
 
     use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
+    use crate::game::application::game_application_service::GameApplicationService;
+    use crate::player::application::player_application_service::PlayerApplicationService;
+    use crate::repository::InMemoryRepository;
     use crate::rest::game_service_rest_adapter_impl::GameServiceRestAdapterImpl;
 
     use super::*;
 
     fn get_rabbitmq_consumer() -> RabbitMQConsumer {
+        let game_application_service = Arc::new(GameApplicationService::new(
+            Box::new(InMemoryRepository::new()),
+            Arc::new(GameServiceRestAdapterImpl::new()),
+        ));
+        let player_application_service = Arc::new(PlayerApplicationService::new(
+            Box::new(InMemoryRepository::new()),
+            Arc::new(GameServiceRestAdapterImpl::new()),
+        ));
+
         RabbitMQConsumer::new(
             false,
-            EventDispatcher::new(Arc::new(GameServiceRestAdapterImpl::new())),
+            EventDispatcher::new(
+                Arc::new(GameServiceRestAdapterImpl::new()),
+                game_application_service,
+                player_application_service,
+            ),
         )
     }
 

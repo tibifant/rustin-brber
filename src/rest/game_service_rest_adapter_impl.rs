@@ -8,7 +8,7 @@ use tracing::{error, info};
 use crate::config::CONFIG;
 use crate::domainprimitives::command::command::Command;
 use crate::game::domain::game_status::GameStatus;
-use crate::player::player::Player;
+use crate::player::domain::player::Player;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 use crate::rest::request::create_game_request_body::CreateGameRequestBody;
 use crate::rest::request::fetch_player_request_query::FetchPlayerRequestQuery;
@@ -133,10 +133,7 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
             .await
             .map_err(GameServiceRestAdapterImpl::handle_reqwest_error)?;
         return match response.status() {
-            StatusCode::OK => {
-                info!("Player joined game ");
-                Ok(true)
-            }
+            StatusCode::OK => Ok(true),
             StatusCode::BAD_REQUEST => {
                 error!("Failed to join game. Its either full or has already started.");
                 Ok(false)
@@ -332,7 +329,11 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
         Ok(())
     }
 
-    async fn patch_round_duration(&self, game_id: &str, round_duration_in_millis: u64) -> Result<(), Box<dyn Error>> {
+    async fn patch_round_duration(
+        &self,
+        game_id: &str,
+        round_duration_in_millis: u64,
+    ) -> Result<(), Box<dyn Error>> {
         let url = format!("{}/games/{}/duration", self.game_host, game_id);
         let body = PatchRoundDurationRequestBody {
             duration: round_duration_in_millis,
@@ -347,13 +348,19 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
             .map_err(GameServiceRestAdapterImpl::handle_reqwest_error)?;
         match response.status() {
             StatusCode::OK => {
-                info!("Round duration patched successfully to {}ms for {}!", round_duration_in_millis, game_id);
+                info!(
+                    "Round duration patched successfully to {}ms for {}!",
+                    round_duration_in_millis, game_id
+                );
             }
             StatusCode::BAD_REQUEST => {
                 error!("Failed to patch round duration. Round duration must be greater than 0.");
             }
             StatusCode::NOT_FOUND => {
-                error!("Failed to patch round duration. Game {} could not be found.", game_id);
+                error!(
+                    "Failed to patch round duration. Game {} could not be found.",
+                    game_id
+                );
             }
             _ => {
                 error!("Unknown error occured when trying to patch round duration!");
@@ -473,6 +480,7 @@ mod tests {
 
         let fake_response = ResponseTemplate::new(201).set_body_json(Player {
             player_id: Some(id.clone()),
+            game_id: None,
             name: "test".to_string(),
             email: "test@mail.de".to_string(),
             player_exchange: "player-test".to_string(),
@@ -513,6 +521,7 @@ mod tests {
             .and(path("/players"))
             .respond_with(ResponseTemplate::new(200).set_body_json(Player {
                 player_id: id.into(),
+                game_id: None,
                 name: "test".to_string(),
                 email: "test@mail.de".to_string(),
                 player_exchange: "player-test".to_string(),

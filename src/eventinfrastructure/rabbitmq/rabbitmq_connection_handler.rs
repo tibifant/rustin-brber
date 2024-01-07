@@ -1,11 +1,12 @@
 use amqprs::callbacks::{DefaultChannelCallback, DefaultConnectionCallback};
 use amqprs::channel::{BasicConsumeArguments, Channel, QueuePurgeArguments};
 use amqprs::connection::{Connection, OpenConnectionArguments};
+use tracing::info;
 
 use crate::config::CONFIG;
 use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
 use crate::eventinfrastructure::rabbitmq::errors::RabbitMQConnectionError;
-use crate::player::player::Player;
+use crate::player::domain::player::Player;
 
 use super::rabbitmq_consumer::RabbitMQConsumer;
 
@@ -49,7 +50,12 @@ impl RabbitMQConnectionHandler {
             .await
             .expect("Failed to purge queue");
     }
-    pub async fn listen_for_and_handle_events(&self, player: &Player, event_dispatcher: EventDispatcher) {
+    pub async fn listen_for_and_handle_events(
+        &self,
+        player: &Player,
+        event_dispatcher: EventDispatcher,
+    ) {
+        info!("Starting Event Listening and Handling!");
         self.channel
             .basic_consume(
                 RabbitMQConsumer::new(false, event_dispatcher),

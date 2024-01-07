@@ -3,4 +3,4 @@ pub mod errors;
 pub mod game_service_rest_adapter_impl;
 pub mod game_service_rest_adapter_trait;
 pub mod request;
-mod response;
+pub mod response;

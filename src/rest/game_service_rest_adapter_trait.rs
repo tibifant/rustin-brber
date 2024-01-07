@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 
 use crate::domainprimitives::command::command::Command;
-use crate::player::player::Player;
+use crate::player::domain::player::Player;
 use crate::rest::response::command_info_response::CommandInfoResponse;
 use crate::rest::response::created_game_info_response_body::CreatedGameInfoResponseBody;
 use crate::rest::response::game_info_response_body::GameInfoResponseBody;
@@ -22,7 +22,11 @@ pub trait GameServiceRestAdapterTrait: Send + Sync + Debug {
     async fn join_game(&self, game_id: &str) -> Result<bool, Box<dyn Error>>;
     async fn send_command(&self, command: Command) -> Result<CommandInfoResponse, Box<dyn Error>>;
     async fn register_player(&self) -> Result<Player, Box<dyn Error>>;
-    async fn patch_round_duration(&self, game_id: &str, round_duration_in_millis: u64) -> Result<(), Box<dyn Error>>;
+    async fn patch_round_duration(
+        &self,
+        game_id: &str,
+        round_duration_in_millis: u64,
+    ) -> Result<(), Box<dyn Error>>;
     async fn fetch_player(&self) -> Result<Player, Box<dyn Error>>;
     async fn start_game(&self, game_id: &str) -> Result<(), Box<dyn Error>>;
     async fn end_all_existing_games(&self) -> Result<(), Box<dyn Error>>;

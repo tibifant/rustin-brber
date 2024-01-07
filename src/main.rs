@@ -4,6 +4,7 @@ mod dungeon_player_startup_handler;
 mod eventinfrastructure;
 mod game;
 mod player;
+mod repository;
 mod rest;
 
 #[tokio::main]
