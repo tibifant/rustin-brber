@@ -25,7 +25,6 @@ use super::errors::{CommandError, GameCreationError, GameServiceError, PlayerErr
 pub struct GameServiceRestAdapterImpl {
     client: HttpClient,
     game_host: String,
-    pub player_id: Option<String>, //Stored for convenience
 }
 
 impl GameServiceRestAdapterImpl {
@@ -33,7 +32,6 @@ impl GameServiceRestAdapterImpl {
         Self {
             client: HttpClient::new(),
             game_host: format!("{}:{}", CONFIG.game_host, CONFIG.game_port),
-            player_id: None,
         }
     }
     pub fn with_game_host(mut self, host: String) -> Self {
@@ -41,10 +39,6 @@ impl GameServiceRestAdapterImpl {
         return self;
     }
 
-    pub fn with_player_id(mut self, player_id: String) -> Self {
-        self.player_id = Some(player_id);
-        self
-    }
     fn handle_reqwest_error(e: reqwest::Error) -> Box<dyn Error> {
         if e.is_connect() {
             Box::new(GameServiceError::NotReachableError(e))
@@ -56,8 +50,12 @@ impl GameServiceRestAdapterImpl {
 
 #[async_trait]
 impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
-    fn get_player_id(&self) -> Option<String> {
-        self.player_id.clone()
+    async fn get_player_id(&self) -> Option<String> {
+        let player = self.fetch_player().await;
+        if let Ok(player) = player {
+            return player.player_id;
+        }
+        return None;
     }
     async fn get_all_games(&self) -> Result<Vec<GameInfoResponseBody>, Box<dyn Error>> {
         let url = format!("{}/games", self.game_host);
@@ -213,6 +211,46 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
         Ok(player)
     }
 
+    async fn patch_round_duration(
+        &self,
+        game_id: &str,
+        round_duration_in_millis: u64,
+    ) -> Result<(), Box<dyn Error>> {
+        let url = format!("{}/games/{}/duration", self.game_host, game_id);
+        let body = PatchRoundDurationRequestBody {
+            duration: round_duration_in_millis,
+        };
+        let response = self
+            .client
+            .async_client
+            .patch(&url)
+            .json(&body)
+            .send()
+            .await
+            .map_err(GameServiceRestAdapterImpl::handle_reqwest_error)?;
+        match response.status() {
+            StatusCode::OK => {
+                info!(
+                    "Round duration patched successfully to {}ms for {}!",
+                    round_duration_in_millis, game_id
+                );
+            }
+            StatusCode::BAD_REQUEST => {
+                error!("Failed to patch round duration. Round duration must be greater than 0.");
+            }
+            StatusCode::NOT_FOUND => {
+                error!(
+                    "Failed to patch round duration. Game {} could not be found.",
+                    game_id
+                );
+            }
+            _ => {
+                error!("Unknown error occured when trying to patch round duration!");
+            }
+        }
+        Ok(())
+    }
+
     async fn fetch_player(&self) -> Result<Player, Box<dyn Error>> {
         let url = format!("{}/players", self.game_host);
         let query = FetchPlayerRequestQuery {
@@ -324,46 +362,6 @@ impl GameServiceRestAdapterTrait for GameServiceRestAdapterImpl {
                 _ => {
                     error!("Game could not be ended: {:?}", game);
                 }
-            }
-        }
-        Ok(())
-    }
-
-    async fn patch_round_duration(
-        &self,
-        game_id: &str,
-        round_duration_in_millis: u64,
-    ) -> Result<(), Box<dyn Error>> {
-        let url = format!("{}/games/{}/duration", self.game_host, game_id);
-        let body = PatchRoundDurationRequestBody {
-            duration: round_duration_in_millis,
-        };
-        let response = self
-            .client
-            .async_client
-            .patch(&url)
-            .json(&body)
-            .send()
-            .await
-            .map_err(GameServiceRestAdapterImpl::handle_reqwest_error)?;
-        match response.status() {
-            StatusCode::OK => {
-                info!(
-                    "Round duration patched successfully to {}ms for {}!",
-                    round_duration_in_millis, game_id
-                );
-            }
-            StatusCode::BAD_REQUEST => {
-                error!("Failed to patch round duration. Round duration must be greater than 0.");
-            }
-            StatusCode::NOT_FOUND => {
-                error!(
-                    "Failed to patch round duration. Game {} could not be found.",
-                    game_id
-                );
-            }
-            _ => {
-                error!("Unknown error occured when trying to patch round duration!");
             }
         }
         Ok(())

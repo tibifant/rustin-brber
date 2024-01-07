@@ -12,7 +12,7 @@ use crate::rest::response::game_info_response_body::GameInfoResponseBody;
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait GameServiceRestAdapterTrait: Send + Sync + Debug {
-    fn get_player_id(&self) -> Option<String>;
+    async fn get_player_id(&self) -> Option<String>;
     async fn get_all_games(&self) -> Result<Vec<GameInfoResponseBody>, Box<dyn Error>>;
     async fn create_game(
         &self,

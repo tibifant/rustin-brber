@@ -40,7 +40,7 @@ impl PlayerApplicationService {
             info!("Player is already registered");
             return player;
         }
-        let remote_player_id = self.game_service_rest_adapter.get_player_id();
+        let remote_player_id = self.game_service_rest_adapter.get_player_id().await;
         if let Some(remote_player_id) = remote_player_id {
             info!("Player is already registered remotely, saving player locally");
             player.assign_player_id(remote_player_id);
