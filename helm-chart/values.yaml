@@ -27,7 +27,7 @@ env:
   DEV_MODE: "false"
 
 ingress:
-  enabled: true
+  enabled: true # True if you run the player on the cluster, false if you run it locally in minikube
   hostname: player-skeleton-rust.dungeon-space.de #TODO: Change this to your ingress hostname
   path: /
   classname: traefik
