@@ -1,0 +1,19 @@
+{{ if eq .Values.service.lb.enabled true }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "player-skeleton-rust.fullname" . }}-lb
+  labels:
+    {{- include "player-skeleton-rust.labels" . | nindent 4 }}
+spec:
+{{- range .Values.service.lb.ports }}
+  type: {{ .type }}
+  ports:
+    - port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      nodePort: {{ .lbPort }}
+      protocol: {{ .protocol }}
+    {{- end }}
+  selector:
+    {{- include "player-skeleton-rust.selectorLabels" . | nindent 4 }}
+    {{- end }}

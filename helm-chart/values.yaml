@@ -1,33 +1,105 @@
-name: "Player-Skeleton-Rust" #TODO: Change this to the name of your Player Application
+
+nameOverride: ""  # ! TODO: update to your player name (otherwise templated default is loaded: see Chart.name)
+fullnameOverride: ""
 replicas: 1
 
-loadBalancerNodePort: 31090
-
 image:
-  name: "registry.gitlab.com/the-microservice-dungeon/player-teams/skeletons/player-rust" #TODO: Change this to your image path
-  tag: "latest"
-  imagePullPolicy: "Always"
-serviceName: "Player-Skeleton-Rust" #TODO: Change this to the name of your Player Application
+  registry: "registry.gitlab.com/the-microservice-dungeon/devops-team/msd-image-registry"
+  name: "player-skeleton-rust"  # ! TODO: change this to your image name
+  # set for specific version, if not set, value is Chart.version
+  tag: latest
+  pullPolicy: Always
 
-lbTargetPort: 8090
-port: 8080
-lbNodePort: 31090
 
-env:
-  DATA_ENDPOINT_PORT: "8090"
-  GAME_HOST: "http://game-service.game" #TODO: Substitute with correct game host
-  GAME_PORT: "8080"
-  RABBITMQ_USERNAME: "admin"
-  RABBITMQ_PASSWORD: "admin"
-  RABBITMQ_HOST: "rabbitmq-service.rabbitmq" #TODO: Substitute with correct rabbitmq host
-  RABBITMQ_PORT: "5672"
-  PLAYER_NAME: "Player-Skeleton-Rust" #TODO: Substitute with correct player name
-  PLAYER_EMAIL: "player-skeleton-rust@test.com" #TODO: Substitute with correct player email
-  RUST_LOG: "INFO"
-  DEV_MODE: "false"
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+service:
+  ports:
+    - name: http
+      port: 8080 # ! TODO: change container port, this port is for access across services (and ingress)
+      targetPort: 8999 # ! TODO: change target port to port your application/service runs on
+      protocol: TCP
+      type: ClusterIP
+
+  lb:
+    enabled: true
+    ports:
+      - port: 31090 # same as lbPort
+        targetPort: 8080 # same as service.ports.port
+        lbPort: 31090
+        protocol: TCP
+        type: LoadBalancer
 
 ingress:
-  enabled: true # True if you run the player on the cluster, false if you run it locally in minikube
-  hostname: player-skeleton-rust.dungeon-space.de #TODO: Change this to your ingress hostname
-  path: /
-  classname: traefik
+  enabled: false # ! TODO: enable if needed, on local use loadbalancer service.lb
+  hosts:
+    - hostname: player-skeleton-rust.msd.dungeon-space.de  # ! TODO: Change this to your ingress hostname, if you need one
+      path: /
+      classname: nginx
+      port: 8080 # same as service.ports.port
+      pathType: Prefix
+
+
+# ! TODO: Readiness Probe remove '{}' and uncomment, if you use an health check endpoint
+readinessProbe: {}
+#  httpGet:
+#    path: /actuator/health # ! TODO: change to health check endpoint
+#    port: http
+#  initialDelaySeconds: 10
+#  periodSeconds: 10
+#  failureThreshold: 3
+#  successThreshold: 1
+
+# ! TODO: Liveness Probe remove '{}' and uncomment, if you use an health check endpoint
+livenessProbe: {}
+#  httpGet:
+#    path: /actuator/health # ! TODO: change to health check endpoint
+#    port: http
+#  initialDelaySeconds: 40
+#  periodSeconds: 10
+#  failureThreshold: 3
+#  successThreshold: 1
+
+# ! TODO: Tweak resources to your needs
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "1G"
+    cpu: "2"
+
+# temp volume for logs
+logVol:
+  name: logs-volume
+  mountPath: /app/logs
+  sizeLimit: 500Mi
+
+
+configmap:
+  data:
+    RABBITMQ_HOST: "rabbitmq-service.rabbitmq.svc.cluster.local"
+    RABBITMQ_PORT: "5672"
+    RABBITMQ_USERNAME: "admin"
+    RABBITMQ_PASSWORD: "admin"
+    GAME_HOST: "game.game.svc.cluster.local"
+    GAME_PORT: "8080"
+
+env:
+  - name: PLAYER_NAME
+    value: "player-skeleton-rust"  # ! TODO: substitute with correct player name
+  - name: PLAYER_EMAIL
+    value: "player-skeleton-rust@msd.com"  # ! TODO: substitute with correct player email
+  - name: DEV_MODE
+    value: false
+  - name: RUST_LOG
+    value: "INFO"
+  - name: DATA_ENDPOINT_PORT
+    value: "8090" # ! TODO: Change to same as service.ports.targetPort
