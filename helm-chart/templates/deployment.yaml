@@ -1,55 +1,53 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.name }}-deployment
-  namespace: {{ .Values.name }}
+  name: {{ include "player-skeleton-rust.fullname" . }}
   labels:
-    app: {{ .Values.name }}
+    {{- include "player-skeleton-rust.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicas | int }} 
   selector:
     matchLabels:
-      app: {{ .Values.name }}
+      {{- include "player-skeleton-rust.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: {{ .Values.name }}
+        {{- include "player-skeleton-rust.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "player-skeleton-rust.serviceAccountName" . }}
       containers:
-        - name: {{ .Values.name }}
-          {{- if .Values.image.tag }}
-          image: {{ .Values.image.name }}:{{ .Values.image.tag }}
-          {{- else }}
-          image: {{ .Values.image.name }}:latest
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ .Values.image.tag | default .Chart.Version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+          {{- range .Values.service.ports }}
+            - name: {{ .name | lower }}
+              containerPort: {{ .port }}
+              protocol: {{ .protocol }}
+            {{- end }}
+          {{- if .Values.resources }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
           {{- end }}
-          imagePullPolicy: {{ .Values.image.imagePullPolicy }}
+          {{- if .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "player-skeleton-rust.fullname" . }}
+          {{- if .Values.env }}
           env:
-            - name: DATA_ENDPOINT_PORT
-              value: {{ .Values.env.DATA_ENDPOINT_PORT | int }}
-            - name: GAME_HOST
-              value: {{ .Values.env.GAME_HOST }}
-            - name: GAME_PORT
-              value: {{ .Values.env.GAME_PORT | int }}
-            - name: RABBITMQ_HOST
-              value: {{ .Values.env.RABBITMQ_HOST }}
-            - name: RABBITMQ_PORT
-              value: {{ .Values.env.RABBITMQ_PORT | int }}
-            - name: RABBITMQ_USERNAME
-              value: {{ .Values.env.RABBITMQ_USERNAME }}
-            - name: RABBITMQ_PASSWORD
-              value: {{ .Values.env.RABBITMQ_PASSWORD }}
-            - name: PLAYER_NAME
-              value: {{ .Values.env.PLAYER_NAME }}
-            - name: PLAYER_EMAIL
-              value: {{ .Values.env.PLAYER_EMAIL }}
-            - name: DEV_MODE
-              value: {{ .Values.env.DEV_MODE }}
-            - name: RUST_LOG
-              value: {{ .Values.env.RUST_LOG }}
+          {{- toYaml .Values.env | nindent 12 }}
+          {{- end }}
           volumeMounts:
-            - mountPath: /app/logs
-              name: logs-volume
+            - mountPath: {{ .Values.logVol.mountPath }}
+              name: {{ .Values.logVol.name }}
       volumes:
-        - name: logs-volume
+        - name: {{ .Values.logVol.name }}
           emptyDir:
-            sizeLimit: 500Mi
+            sizeLimit: {{ .Values.logVol.sizeLimit }}
