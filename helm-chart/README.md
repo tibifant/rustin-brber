@@ -29,4 +29,4 @@ or in root DIR
 4. install `helm -n my-namespace install player-skeleton-rust helm-chart --create-namespace`
 
 ---
-Delete Release: `helm -n my-namespace delete player-skeleton-rust helm-chart`
+Delete Release: `helm -n my-namespace delete player-skeleton-rust`
