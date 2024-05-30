@@ -89,7 +89,7 @@ configmap:
     RABBITMQ_PORT: "5672"
     RABBITMQ_USERNAME: "admin"
     RABBITMQ_PASSWORD: "admin"
-    GAME_HOST: "game.game.svc.cluster.local"
+    GAME_HOST: "http://game.game.svc.cluster.local"
     GAME_PORT: "8080"
 
 env:
@@ -98,7 +98,7 @@ env:
   - name: PLAYER_EMAIL
     value: "player-skeleton-rust@msd.com"  # ! TODO: substitute with correct player email
   - name: DEV_MODE
-    value: false
+    value: "false"
   - name: RUST_LOG
     value: "INFO"
   - name: DATA_ENDPOINT_PORT
