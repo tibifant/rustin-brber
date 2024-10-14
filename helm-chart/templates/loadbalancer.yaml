@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "player-skeleton-rust.labels" . | nindent 4 }}
 spec:
-{{- range .Values.service.lb.ports }}
+{{- with .Values.service.lb }}
   type: {{ .type }}
   ports:
     - port: {{ .port }}

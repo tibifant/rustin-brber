@@ -1,12 +1,14 @@
 {{- if eq .Values.ingress.enabled true}}
 {{- $fullname := include "player-skeleton-rust.fullname" . -}}
+{{- $port := .Values.service.my.port -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "player-skeleton-rust.fullname" . }}
 spec:
+  ingressClassName: {{ .Values.ingress.classname }}
   rules:
-    {{- range .Values.ingress.hosts }}
+    {{- with .Values.ingress.hosts }}
     - host: {{ .hostname }}
       http:
         paths:
@@ -16,6 +18,6 @@ spec:
               service:
                 name: {{ $fullname }}
                 port:
-                  number: {{ .port }}
+                  number: {{ $port }}
     {{- end }}
 {{- end }}

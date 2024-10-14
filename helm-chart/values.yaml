@@ -2,6 +2,7 @@
 nameOverride: ""  # ! TODO: update to your player name (otherwise templated default is loaded: see Chart.name)
 fullnameOverride: ""
 replicas: 1
+clusterDomain: cluster.local
 
 image:
   registry: "registry.gitlab.com/the-microservice-dungeon/devops-team/msd-image-registry"
@@ -21,30 +22,28 @@ serviceAccount:
   name: ""
 
 service:
-  ports:
-    - name: http
-      port: 8080 # ! TODO: change container port, this port is for access across services (and ingress)
-      targetPort: 8999 # ! TODO: change target port to port your application/service runs on
-      protocol: TCP
-      type: ClusterIP
+  my:
+    portName: http
+    port: 8080 # ! TODO: change container port, this port is for access across services (and ingress)
+    targetPort: 8999 # ! TODO: change target port to port your application/service runs on
+    protocol: TCP
+    type: ClusterIP
 
   lb:
     enabled: true
-    ports:
-      - port: 31090 # same as lbPort
-        targetPort: 8080 # same as service.ports.port
-        lbPort: 31090
-        protocol: TCP
-        type: LoadBalancer
+    port: 31090 # same as lbPort
+    targetPort: 8080 # same as service.my.port
+    lbPort: 31090
+    protocol: TCP
+    type: LoadBalancer
 
 ingress:
-  enabled: false # ! TODO: enable if needed, on local use loadbalancer service.lb
+  enabled: false # ! TODO: enable if needed, on local set this to false and use loadbalancer service.lb
+  classname: nginx
   hosts:
-    - hostname: player-skeleton-rust.msd.dungeon-space.de  # ! TODO: Change this to your ingress hostname, if you need one
-      path: /
-      classname: nginx
-      port: 8080 # same as service.ports.port
-      pathType: Prefix
+    hostname: player-skeleton-rust.msd.dungeon-space.de  # ! TODO: Change this to your ingress hostname, if you need one
+    path: /
+    pathType: Prefix
 
 
 # ! TODO: Readiness Probe remove '{}' and uncomment, if you use an health check endpoint
@@ -68,13 +67,14 @@ livenessProbe: {}
 #  successThreshold: 1
 
 # ! TODO: Tweak resources to your needs
+# CPU 1 = 1000m / `m` means Milli / a thousand of CPU
 resources:
   requests:
     memory: "128Mi"
     cpu: "100m"
   limits:
     memory: "1G"
-    cpu: "2"
+    cpu: "2000m"
 
 # temp volume for logs
 logVol:
@@ -85,21 +85,19 @@ logVol:
 
 configmap:
   data:
-    RABBITMQ_HOST: "rabbitmq-service.rabbitmq.svc.cluster.local"
+    RABBITMQ_HOST: "rabbitmq.rabbitmq.svc.{{ .Values.clusterDomain }}"
     RABBITMQ_PORT: "5672"
     RABBITMQ_USERNAME: "admin"
     RABBITMQ_PASSWORD: "admin"
-    GAME_HOST: "http://game.game.svc.cluster.local"
+    GAME_HOST: "game.game.svc.{{ .Values.clusterDomain }}"
     GAME_PORT: "8080"
 
 env:
-  - name: PLAYER_NAME
-    value: "player-skeleton-rust"  # ! TODO: substitute with correct player name
-  - name: PLAYER_EMAIL
-    value: "player-skeleton-rust@msd.com"  # ! TODO: substitute with correct player email
-  - name: DEV_MODE
-    value: "false"
-  - name: RUST_LOG
-    value: "INFO"
-  - name: DATA_ENDPOINT_PORT
-    value: "8090" # ! TODO: Change to same as service.ports.targetPort
+  # ! TODO: substitute with correct player name
+  PLAYER_NAME: "player-skeleton-rust"
+  # ! TODO: substitute with correct player email
+  PLAYER_EMAIL: "player-skeleton-rust@msd.com"
+  DEV_MODE: "false"
+  RUST_LOG: "INFO"
+  # ! TODO: Change to same as service.my.targetPort
+  DATA_ENDPOINT_PORT: "8090"
