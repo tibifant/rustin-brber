@@ -5,13 +5,13 @@ metadata:
   labels:
   {{- include "player-skeleton-rust.labels" . | nindent 4 }}
 spec:
-{{- range .Values.service.ports }}
+{{- with .Values.service.my }}
   type: {{ .type }}
   ports:
     - port: {{ .port }}
       targetPort: {{ .targetPort }}
       protocol: {{ .protocol }}
-      name: {{ .name }}
+      name: {{ .portName }}
       {{- end }}
   selector:
   {{- include "player-skeleton-rust.selectorLabels" . | nindent 4 }}

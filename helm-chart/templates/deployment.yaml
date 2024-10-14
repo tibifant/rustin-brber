@@ -17,11 +17,11 @@ spec:
       serviceAccountName: {{ include "player-skeleton-rust.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ .Values.image.tag | default .Chart.Version }}"
+          image: "{{ .Values.image.registry }}/{{ .Values.image.name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-          {{- range .Values.service.ports }}
-            - name: {{ .name | lower }}
+          {{- with .Values.service.my }}
+            - name: {{ .portName | lower }}
               containerPort: {{ .port }}
               protocol: {{ .protocol }}
             {{- end }}
@@ -42,7 +42,10 @@ spec:
                 name: {{ include "player-skeleton-rust.fullname" . }}
           {{- if .Values.env }}
           env:
-          {{- toYaml .Values.env | nindent 12 }}
+          {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ tpl $value $ | quote }}
+              {{- end }}
           {{- end }}
           volumeMounts:
             - mountPath: {{ .Values.logVol.mountPath }}
