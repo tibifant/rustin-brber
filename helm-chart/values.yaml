@@ -1,12 +1,12 @@
 
-nameOverride: ""  # ! TODO: update to your player name (otherwise templated default is loaded: see Chart.name)
+nameOverride: "rustin_brber"  # ! TODO: update to your player name (otherwise templated default is loaded: see Chart.name)
 fullnameOverride: ""
 replicas: 1
 clusterDomain: cluster.local
 
 image:
   registry: "registry.gitlab.com/the-microservice-dungeon/devops-team/msd-image-registry"
-  name: "player-skeleton-rust"  # ! TODO: change this to your image name
+  name: "player-rustin_brber"  # ! TODO: change this to your image name
   # set for specific version, if not set, value is Chart.version
   tag: latest
   pullPolicy: Always
@@ -94,9 +94,9 @@ configmap:
 
 env:
   # ! TODO: substitute with correct player name
-  PLAYER_NAME: "player-skeleton-rust"
+  PLAYER_NAME: "rustin_brber"
   # ! TODO: substitute with correct player email
-  PLAYER_EMAIL: "player-skeleton-rust@msd.com"
+  PLAYER_EMAIL: "rustin@brber.com"
   DEV_MODE: "false"
   RUST_LOG: "INFO"
   # ! TODO: Change to same as service.my.targetPort

@@ -1,8 +1,8 @@
 
 variables:
   PATH_TO_CHART: "helm-chart"
-  CHART_NAME: "player-skeleton-rust" # ! TODO: replace with your player-name
-  CI_MSD_CONTAINER_REGISTRY: "registry.gitlab.com/the-microservice-dungeon/devops-team/msd-image-registry/player-skeleton-rust" # ! TODO: replace player-skeleton-rust with your player-name
+  CHART_NAME: "rustin_brber" # ! TODO: replace with your player-name
+  CI_MSD_CONTAINER_REGISTRY: "registry.gitlab.com/the-microservice-dungeon/devops-team/msd-image-registry/rustin_brber" # ! TODO: replace player-skeleton-rust with your player-name
 
 
 
