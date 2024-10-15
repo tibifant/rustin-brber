@@ -1,23 +1,21 @@
-
-variables:
-  PATH_TO_CHART: "helm-chart"
-  CHART_NAME: "rustin_brber" # ! TODO: replace with your player-name
-  CI_MSD_CONTAINER_REGISTRY: "registry.gitlab.com/the-microservice-dungeon/devops-team/msd-image-registry/rustin_brber" # ! TODO: replace player-skeleton-rust with your player-name
-
-
-
 include:
-  - project: "the-microservice-dungeon/devops-team/common-ci-cd"
+  - project: "msd-players/msd-workflows"
     ref: "main"
     file:
+      - "container/image-build-publish.yaml"
       - "helm/package-publish.yaml"
-      - "container/image-dockerfile-publish.yaml"
+
+variables:
+  PATH_TO_CHART: "helm-chart" # folder of root-level inside your player, that contains the helm-chart
+  CHART_NAME: "rustin-brber"
+  CI_MSD_CONTAINER_REGISTRY: "registry.gitlab.com/msd-players/registry/rustin_brber"
+
 
 
 stages:
   - test
-  - build_container_push
-  - helm
+  - build_container_push # stage from msd-players/msd-workflows/container/image-build-publish.yaml
+  - helm # stage from msd-players/msd-workflows/helm/package-publish.yaml
 
 test:
   stage: test
@@ -26,14 +24,14 @@ test:
     - cargo test
 
 
-# build stage (build from Dockerfile and push to msd registry, access token is needed)
+# container build and push stage (inside from `build_container_push`-stage)
 container-image-publish:
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: always
 
-# build and push helm chart to our registry (no access token is needed)
+# # helm package and publish stage (inside `helm`-stage)
 helm-package-publish:
   rules:
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
@@ -41,4 +39,3 @@ helm-package-publish:
         - ${PATH_TO_CHART}/**/*
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: always
-
