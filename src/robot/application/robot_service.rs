@@ -7,13 +7,13 @@ use crate::repository::AsyncRepository;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
 pub struct RobotApplicationService {
-    robot_repository: Box<dyn AsyncRepository<Player> + Send + Sync>,
+    robot_repository: Box<dyn AsyncRepository<Robot> + Send + Sync>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
 }
 
-impl PlayerApplicationService {
+impl RobotApplicationService {
     pub fn new(
-        robot_repository: Box<dyn AsyncRepository<Player> + Send + Sync>,
+        robot_repository: Box<dyn AsyncRepository<Robot> + Send + Sync>,
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
     ) -> Self {
         Self {
