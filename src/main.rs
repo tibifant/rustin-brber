@@ -6,6 +6,7 @@ mod game;
 mod player;
 mod repository;
 mod rest;
+mod robot;
 
 #[tokio::main]
 async fn main() {

@@ -6,20 +6,24 @@ use crate::config::CONFIG;
 use crate::game::domain::game::Game;
 use crate::repository::AsyncRepository;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
+use crate::robot::application::robot_service::RobotApplicationService;
 
 pub struct GameApplicationService {
     game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
+    robot_service: RobotApplicationService,
 }
 
 impl GameApplicationService {
     pub fn new(
         game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
+        robot_service: RobotApplicationService,
     ) -> Self {
         Self {
             game_repository,
             game_service_rest_adapter,
+            robot_service,
         }
     }
 
@@ -61,6 +65,7 @@ impl GameApplicationService {
             Some(mut game) => {
                 game.start_round();
                 self.game_repository.save(game).await.unwrap();
+                self.robot_service.buy_robots().await;
             }
             None => {
                 error!("Game with id {} not found", game_id)

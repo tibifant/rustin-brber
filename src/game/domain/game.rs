@@ -75,6 +75,8 @@ impl Game {
             return;
         }
         self.current_round_number += 1;
+
+        // TODO execute commands and stuff
     }
 }
 
