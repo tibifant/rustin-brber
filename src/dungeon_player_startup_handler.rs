@@ -11,7 +11,6 @@ use crate::player::domain::player::Player;
 use crate::repository::InMemoryRepository;
 use crate::rest::game_service_rest_adapter_impl::*;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
-use crate::robot::application::robot_service::RobotApplicationService;
 
 pub struct DungeonPlayerStartupHandler {
     player_application_service: Arc<PlayerApplicationService>,
@@ -24,17 +23,13 @@ impl DungeonPlayerStartupHandler {
     pub async fn new() -> Self {
         let game_service_rest_adapter = Arc::new(GameServiceRestAdapterImpl::new());
         let player_application_service = Arc::new(PlayerApplicationService::new(
-            Box::new(InMemoryRepository::new()),
             game_service_rest_adapter.clone()));
         Self {
             player_application_service: player_application_service.clone(),
             game_application_service: Arc::new(GameApplicationService::new(
                 Box::new(InMemoryRepository::new()),
-                game_service_rest_adapter.clone(), 
-                RobotApplicationService::new(
-                    Box::new(InMemoryRepository::new()),
-                    game_service_rest_adapter.clone(), 
-                    player_application_service.clone()),
+                game_service_rest_adapter.clone(),
+                player_application_service.clone(),
             )),
             game_service_rest_adapter: game_service_rest_adapter.clone(),
             rabbitmq_connection_handler: RabbitMQConnectionHandler::new()

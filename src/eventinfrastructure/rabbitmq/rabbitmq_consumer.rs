@@ -147,26 +147,19 @@ mod test {
     use crate::player::application::player_application_service::PlayerApplicationService;
     use crate::repository::InMemoryRepository;
     use crate::rest::game_service_rest_adapter_impl::{self, GameServiceRestAdapterImpl};
-    use crate::robot::application::robot_service::RobotApplicationService;
 
     use super::*;
 
     fn get_rabbitmq_consumer() -> RabbitMQConsumer {
         let game_service_rest_adapter = Arc::new(GameServiceRestAdapterImpl::new());
+        let player_application_service = Arc::new(PlayerApplicationService::new(
+            game_service_rest_adapter.clone(),
+        ));
         let game_application_service = Arc::new(GameApplicationService::new(
             Box::new(InMemoryRepository::new()),
             game_service_rest_adapter.clone(),
-            RobotApplicationService::new(
-                Box::new(InMemoryRepository::new()),
-                game_service_rest_adapter.clone(),
-                Arc::new(PlayerApplicationService::new(
-                    Box::new(InMemoryRepository::new()), game_service_rest_adapter.clone()))
-                ),
+            player_application_service.clone(),
             ));
-        let player_application_service = Arc::new(PlayerApplicationService::new(
-            Box::new(InMemoryRepository::new()),
-            game_service_rest_adapter,
-        ));
 
         RabbitMQConsumer::new(
             false,

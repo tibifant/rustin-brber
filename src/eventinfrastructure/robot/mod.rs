@@ -1,4 +1,4 @@
-mod dto;
+pub mod dto;
 pub mod robot_attacked_event;
 mod robot_level;
 pub mod robot_moved_event;

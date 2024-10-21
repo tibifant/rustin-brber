@@ -6,15 +6,14 @@ use crate::eventinfrastructure::game_event_body_type::GameEventBodyType;
 use crate::game::application::game_application_service::GameApplicationService;
 use crate::game::application::game_status_event_handler::GameStatusEventHandler;
 use crate::game::application::round_status_event_handler::RoundStatusEventHandler;
+use crate::game::application::robot_spawned_event_handler::RobotSpawnedEventHandler;
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
 pub struct EventDispatcher {
-    game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-    game_application_service: Arc<GameApplicationService>,
-    player_application_service: Arc<PlayerApplicationService>,
     game_status_event_handler: Arc<GameStatusEventHandler>,
     round_status_event_handler: Arc<RoundStatusEventHandler>,
+    robot_spawned_event_handler: Arc<RobotSpawnedEventHandler>,
 }
 
 impl EventDispatcher {
@@ -24,7 +23,6 @@ impl EventDispatcher {
         player_application_service: Arc<PlayerApplicationService>,
     ) -> Self {
         Self {
-            game_service_rest_adapter: game_service_rest_adapter.clone(),
             game_status_event_handler: Arc::new(GameStatusEventHandler::new(
                 game_service_rest_adapter.clone(),
                 game_application_service.clone(),
@@ -34,8 +32,10 @@ impl EventDispatcher {
                 game_service_rest_adapter.clone(),
                 game_application_service.clone(),
             )),
-            game_application_service,
-            player_application_service,
+            robot_spawned_event_handler: Arc::new(RobotSpawnedEventHandler::new(
+                game_service_rest_adapter.clone(),
+                game_application_service.clone(),
+            )),
             //TODO: add Event Handler for remaining Events
         }
     }
@@ -51,8 +51,11 @@ impl EventDispatcher {
                     .handle(round_status_event)
                     .await;
             }
+            GameEventBodyType::RobotSpawned(robot_spawned_event) => {
+                self.robot_spawned_event_handler.handle(robot_spawned_event).await;
+            }
             //TODO: Call Event Handler for Remaining Event Type
-            // handlers for other events, then call round_handler
+            // handlers for other events
             _ => {}
         }
     }

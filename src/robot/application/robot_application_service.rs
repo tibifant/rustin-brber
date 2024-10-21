@@ -7,6 +7,7 @@ use crate::robot::domain::robot::Robot;
 use crate::repository::AsyncRepository;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 use crate::domainprimitives::command::command::Command;
+use crate::repository::InMemoryRepository;
 use crate::repository::Identifiable;
 
 pub struct RobotApplicationService {
@@ -17,10 +18,10 @@ pub struct RobotApplicationService {
 
 impl RobotApplicationService {
     pub fn new(
-        robot_repository: Box<dyn AsyncRepository<Robot> + Send + Sync>,
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
         player_application_service: Arc<PlayerApplicationService>,
     ) -> Self {
+        let robot_repository = Box::new(InMemoryRepository::new());
         Self {
             robot_repository,
             game_service_rest_adapter,
@@ -34,5 +35,11 @@ impl RobotApplicationService {
         info!("!!!!!!!!!!!!Try to buy 1 Robot!!!!!!!!!!!!!!.");
         let command_info_repsonse = self.game_service_rest_adapter.send_command(buy_robot_command).await;
         info!("------ {:?}", command_info_repsonse);
+    }
+
+    pub async fn add_robot(&self, robot_id: &str, planet_id: &str) {
+        let robot = Robot::new(robot_id.to_string(), planet_id.to_string());
+        let _ = self.robot_repository.add(robot);
+        info!("!!!!!!!!------- added robot -------!!!!!!!!");
     }
 }

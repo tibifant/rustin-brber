@@ -4,6 +4,7 @@ use tracing::{error, info};
 
 use crate::player::domain::player::Player;
 use crate::repository::AsyncRepository;
+use crate::repository::InMemoryRepository;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
 pub struct PlayerApplicationService {
@@ -13,11 +14,10 @@ pub struct PlayerApplicationService {
 
 impl PlayerApplicationService {
     pub fn new(
-        player_repository: Box<dyn AsyncRepository<Player> + Send + Sync>,
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
     ) -> Self {
         Self {
-            player_repository,
+            player_repository: Box::new(InMemoryRepository::new()),
             game_service_rest_adapter,
         }
     }

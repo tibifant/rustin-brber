@@ -4,26 +4,39 @@ use tracing::{error, info, warn};
 
 use crate::config::CONFIG;
 use crate::game::domain::game::Game;
+use crate::player::application::player_application_service::{self, PlayerApplicationService};
+use crate::robot::application::robot_application_service::{self, RobotApplicationService};
 use crate::repository::AsyncRepository;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
-use crate::robot::application::robot_service::RobotApplicationService;
+use crate::game::application::game_reaction_service::GameReactionService;
+
+use super::game_reaction_service;
 
 pub struct GameApplicationService {
     game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-    robot_service: RobotApplicationService,
+    game_reaction_service: GameReactionService,
+    player_application_service: Arc<PlayerApplicationService>,
+    robot_application_service: Arc<RobotApplicationService>,
 }
 
 impl GameApplicationService {
     pub fn new(
         game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-        robot_service: RobotApplicationService,
+        player_application_service: Arc<PlayerApplicationService>,
     ) -> Self {
+        let robot_application_service = Arc::new(RobotApplicationService::new(
+            game_service_rest_adapter.clone(),
+            player_application_service.clone()));
+        let game_reaction_service = GameReactionService::new(
+            game_service_rest_adapter.clone(), player_application_service.clone(), robot_application_service.clone());
         Self {
             game_repository,
             game_service_rest_adapter,
-            robot_service,
+            game_reaction_service,
+            player_application_service,
+            robot_application_service,
         }
     }
 
@@ -65,12 +78,17 @@ impl GameApplicationService {
             Some(mut game) => {
                 game.start_round();
                 self.game_repository.save(game).await.unwrap();
-                self.robot_service.buy_robots().await;
+                self.game_reaction_service.decide().await;
             }
             None => {
                 error!("Game with id {} not found", game_id)
             }
         }
+    }
+
+    pub async fn robot_spawned(&self, robot_id: &str, planet_id: &str) {
+        self.robot_application_service.add_robot(robot_id, planet_id).await;
+        // TODO: planet stuff
     }
 
     pub async fn fetch_and_save_remote_game(&self) -> Option<Game> {
