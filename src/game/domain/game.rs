@@ -1,4 +1,5 @@
 use tracing::error;
+use tracing::info;
 
 use crate::game::domain::game_status::GameStatus;
 use crate::repository::Identifiable;
@@ -75,8 +76,7 @@ impl Game {
             return;
         }
         self.current_round_number += 1;
-
-        // TODO execute commands and stuff
+        info!("current round number: {}", self.current_round_number);
     }
 }
 
