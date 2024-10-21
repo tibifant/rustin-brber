@@ -10,14 +10,10 @@ use crate::repository::AsyncRepository;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 use crate::game::application::game_reaction_service::GameReactionService;
 
-use super::game_reaction_service;
-
 pub struct GameApplicationService {
     game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
     game_reaction_service: GameReactionService,
-    player_application_service: Arc<PlayerApplicationService>,
-    robot_application_service: Arc<RobotApplicationService>,
 }
 
 impl GameApplicationService {
@@ -25,18 +21,14 @@ impl GameApplicationService {
         game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
         player_application_service: Arc<PlayerApplicationService>,
+        robot_application_service: Arc<RobotApplicationService>,
     ) -> Self {
-        let robot_application_service = Arc::new(RobotApplicationService::new(
-            game_service_rest_adapter.clone(),
-            player_application_service.clone()));
         let game_reaction_service = GameReactionService::new(
             game_service_rest_adapter.clone(), player_application_service.clone(), robot_application_service.clone());
         Self {
             game_repository,
             game_service_rest_adapter,
             game_reaction_service,
-            player_application_service,
-            robot_application_service,
         }
     }
 
@@ -84,11 +76,6 @@ impl GameApplicationService {
                 error!("Game with id {} not found", game_id)
             }
         }
-    }
-
-    pub async fn robot_spawned(&self, robot_id: &str, planet_id: &str) {
-        self.robot_application_service.add_robot(robot_id, planet_id).await;
-        // TODO: planet stuff
     }
 
     pub async fn fetch_and_save_remote_game(&self) -> Option<Game> {

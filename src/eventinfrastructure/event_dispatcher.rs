@@ -6,9 +6,12 @@ use crate::eventinfrastructure::game_event_body_type::GameEventBodyType;
 use crate::game::application::game_application_service::GameApplicationService;
 use crate::game::application::game_status_event_handler::GameStatusEventHandler;
 use crate::game::application::round_status_event_handler::RoundStatusEventHandler;
-use crate::game::application::robot_spawned_event_handler::RobotSpawnedEventHandler;
+use crate::robot::application::robot_application_service::RobotApplicationService;
+use crate::robot::application::robot_spawned_event_handler::RobotSpawnedEventHandler;
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
+
+use super::robot::robots_revealed_event;
 
 pub struct EventDispatcher {
     game_status_event_handler: Arc<GameStatusEventHandler>,
@@ -21,6 +24,7 @@ impl EventDispatcher {
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
         game_application_service: Arc<GameApplicationService>,
         player_application_service: Arc<PlayerApplicationService>,
+        robot_application_service: Arc<RobotApplicationService>,
     ) -> Self {
         Self {
             game_status_event_handler: Arc::new(GameStatusEventHandler::new(
@@ -33,8 +37,7 @@ impl EventDispatcher {
                 game_application_service.clone(),
             )),
             robot_spawned_event_handler: Arc::new(RobotSpawnedEventHandler::new(
-                game_service_rest_adapter.clone(),
-                game_application_service.clone(),
+                robot_application_service.clone(),
             )),
             //TODO: add Event Handler for remaining Events
         }
@@ -53,6 +56,9 @@ impl EventDispatcher {
             }
             GameEventBodyType::RobotSpawned(robot_spawned_event) => {
                 self.robot_spawned_event_handler.handle(robot_spawned_event).await;
+            }
+            GameEventBodyType::RobotsRevealed(robots_revealed_event) => {
+                // TODO: add handler here
             }
             //TODO: Call Event Handler for Remaining Event Type
             // handlers for other events

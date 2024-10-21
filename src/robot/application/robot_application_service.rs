@@ -32,7 +32,7 @@ impl RobotApplicationService {
     pub async fn buy_robots(&self) {
         let player = self.player_application_service.query_and_if_needed_create_player().await;
         let buy_robot_command = Command::create_robot_purchase_command(player.id(), 1);
-        info!("!!!!!!!!!!!!Try to buy 1 Robot!!!!!!!!!!!!!!.");
+        info!("====> Try to buy 1 Robot!!!!!!!!!!!!!!.");
         let command_info_repsonse = self.game_service_rest_adapter.send_command(buy_robot_command).await;
         info!("------ {:?}", command_info_repsonse);
     }
@@ -40,6 +40,6 @@ impl RobotApplicationService {
     pub async fn add_robot(&self, robot_id: &str, planet_id: &str) {
         let robot = Robot::new(robot_id.to_string(), planet_id.to_string());
         let _ = self.robot_repository.add(robot);
-        info!("!!!!!!!!------- added robot -------!!!!!!!!");
+        info!("====> added robot -------!!!!!!!!");
     }
 }

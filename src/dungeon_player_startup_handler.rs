@@ -11,9 +11,11 @@ use crate::player::domain::player::Player;
 use crate::repository::InMemoryRepository;
 use crate::rest::game_service_rest_adapter_impl::*;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
+use crate::robot::application::robot_application_service::{self, RobotApplicationService};
 
 pub struct DungeonPlayerStartupHandler {
     player_application_service: Arc<PlayerApplicationService>,
+    robot_application_service: Arc<RobotApplicationService>,
     game_application_service: Arc<GameApplicationService>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
     rabbitmq_connection_handler: RabbitMQConnectionHandler,
@@ -24,12 +26,18 @@ impl DungeonPlayerStartupHandler {
         let game_service_rest_adapter = Arc::new(GameServiceRestAdapterImpl::new());
         let player_application_service = Arc::new(PlayerApplicationService::new(
             game_service_rest_adapter.clone()));
+        let robot_application_service = Arc::new(RobotApplicationService::new(
+            game_service_rest_adapter.clone(),
+            player_application_service.clone(),
+        ));
         Self {
             player_application_service: player_application_service.clone(),
+            robot_application_service: robot_application_service.clone(),
             game_application_service: Arc::new(GameApplicationService::new(
                 Box::new(InMemoryRepository::new()),
                 game_service_rest_adapter.clone(),
                 player_application_service.clone(),
+                robot_application_service.clone(),
             )),
             game_service_rest_adapter: game_service_rest_adapter.clone(),
             rabbitmq_connection_handler: RabbitMQConnectionHandler::new()
@@ -66,6 +74,7 @@ impl DungeonPlayerStartupHandler {
             self.game_service_rest_adapter.clone(),
             self.game_application_service.clone(),
             self.player_application_service.clone(),
+            self.robot_application_service.clone(),
         )
     }
 

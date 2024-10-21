@@ -145,6 +145,7 @@ mod test {
     use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
     use crate::game::application::game_application_service::GameApplicationService;
     use crate::player::application::player_application_service::PlayerApplicationService;
+    use crate::robot::application::robot_application_service::RobotApplicationService;
     use crate::repository::InMemoryRepository;
     use crate::rest::game_service_rest_adapter_impl::{self, GameServiceRestAdapterImpl};
 
@@ -155,10 +156,15 @@ mod test {
         let player_application_service = Arc::new(PlayerApplicationService::new(
             game_service_rest_adapter.clone(),
         ));
+        let robot_application_service = Arc::new(RobotApplicationService::new(
+            game_service_rest_adapter.clone(),
+            player_application_service.clone(),
+        ));
         let game_application_service = Arc::new(GameApplicationService::new(
             Box::new(InMemoryRepository::new()),
             game_service_rest_adapter.clone(),
             player_application_service.clone(),
+            robot_application_service.clone(),
             ));
 
         RabbitMQConsumer::new(
@@ -167,6 +173,7 @@ mod test {
                 Arc::new(GameServiceRestAdapterImpl::new()),
                 game_application_service,
                 player_application_service,
+                robot_application_service,
             ),
         )
     }
