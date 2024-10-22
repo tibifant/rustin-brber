@@ -13,6 +13,4 @@ pub struct RobotInventoryDto {
     pub max_storage: u16,
     pub full: bool,
     pub resources: RobotResourceInventoryDto,
-    #[serde(flatten)]
-    extra: Option<Value>,
 }

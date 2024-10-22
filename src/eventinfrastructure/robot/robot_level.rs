@@ -14,6 +14,4 @@ pub struct RobotsRevealedLevelDto {
     pub mining_speed_level: RobotLevel,
     #[serde(default = "RobotLevel::default_level")]
     pub storage_level: RobotLevel,
-    #[serde(flatten)]
-    extra: Option<Value>,
 }
