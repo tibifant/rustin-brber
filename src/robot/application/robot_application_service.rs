@@ -42,4 +42,8 @@ impl RobotApplicationService {
         let _ = self.robot_repository.add(robot);
         info!("====> added robot -------!!!!!!!!");
     }
+
+    pub async fn add_or_update_robots(&self, robot_id: &str, planet_id: &str) {
+        info!("====> robot revealed -------!!!!!!!!");
+    }
 }

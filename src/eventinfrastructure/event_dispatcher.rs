@@ -8,16 +8,15 @@ use crate::game::application::game_status_event_handler::GameStatusEventHandler;
 use crate::game::application::round_status_event_handler::RoundStatusEventHandler;
 use crate::robot::application::robot_application_service::RobotApplicationService;
 use crate::robot::application::robot_spawned_event_handler::RobotSpawnedEventHandler;
+use crate::robot::application::robots_revealed_event_handler::RobotsRevealedEventHandler;
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
-
-use super::map::planet_resource_mined_event;
-use super::robot::robots_revealed_event;
 
 pub struct EventDispatcher {
     game_status_event_handler: Arc<GameStatusEventHandler>,
     round_status_event_handler: Arc<RoundStatusEventHandler>,
     robot_spawned_event_handler: Arc<RobotSpawnedEventHandler>,
+    robots_revealed_event_handler: Arc<RobotsRevealedEventHandler>,
 }
 
 impl EventDispatcher {
@@ -40,6 +39,9 @@ impl EventDispatcher {
             robot_spawned_event_handler: Arc::new(RobotSpawnedEventHandler::new(
                 robot_application_service.clone(),
             )),
+            robots_revealed_event_handler: Arc::new(RobotsRevealedEventHandler::new(
+                robot_application_service.clone(),
+            ))
             //TODO: add Event Handler for remaining Events
         }
     }
@@ -59,7 +61,7 @@ impl EventDispatcher {
                 self.robot_spawned_event_handler.handle(robot_spawned_event).await;
             }
             GameEventBodyType::RobotsRevealed(robots_revealed_event) => {
-                // TODO: add handler here
+                self.robots_revealed_event_handler.handle(robots_revealed_event).await;
             }
             GameEventBodyType::PlanetResourceMined(planet_resource_mined_event) => {
                 // TODO: add handler here
