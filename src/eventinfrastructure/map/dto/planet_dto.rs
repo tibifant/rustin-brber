@@ -8,5 +8,5 @@ pub struct PlanetDto {
     pub planet_id: String,
     pub game_world_id: String,
     pub movement_difficulty: u8,
-    pub resource_type: MineableResourceType,
+    pub resource_type: Option<MineableResourceType>,
 }

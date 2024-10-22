@@ -8,9 +8,9 @@ use crate::eventinfrastructure::robot::robot_level::RobotsRevealedLevelDto;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RobotDto {
+    pub alive: bool,
     #[serde(rename = "id")]
     pub robot_id: String,
-    pub alive: bool,
     #[serde(rename = "player")]
     pub player_id: String,
     pub planet: PlanetDto,

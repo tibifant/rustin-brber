@@ -110,22 +110,26 @@ impl AsyncConsumer for RabbitMQConsumer {
 
         let game_event_type: GameEventBodyType = match serde_json::from_value(game_event_json) {
             Ok(game_event) => game_event,
-            Err(_) => {
+            Err(e) => {
                 let error: ParseError = ParseError::InvalidType(format!(
-                    "{:?}\n{}",
+                    "{:?}\nerror: `{}` in {}:{}\n====================================================\n{}",
                     header.event_type,
+                    e.to_string(),
+                    e.line(),
+                    e.column(),
                     serde_json::to_string_pretty(&body_json)
                         .expect("Could not serialize body to string")
                 ));
-                error!("{}", error);
+                error!("{}\n", error);
                 return;
             }
         };
+        info!("EVENT TYPE: {:?}", game_event_type);
         let game_event = GameEvent {
             header,
             event_body: game_event_type,
         };
-        info!("Received event: {:?}", game_event);
+        //info!("Received event: {:?}", game_event);
         self.handle_event(game_event).await;
         if !self.no_ack {
             #[cfg(feature = "traces")]
