@@ -11,6 +11,7 @@ use crate::robot::application::robot_spawned_event_handler::RobotSpawnedEventHan
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
+use super::map::planet_resource_mined_event;
 use super::robot::robots_revealed_event;
 
 pub struct EventDispatcher {
@@ -58,6 +59,9 @@ impl EventDispatcher {
                 self.robot_spawned_event_handler.handle(robot_spawned_event).await;
             }
             GameEventBodyType::RobotsRevealed(robots_revealed_event) => {
+                // TODO: add handler here
+            }
+            GameEventBodyType::PlanetResourceMined(planet_resource_mined_event) => {
                 // TODO: add handler here
             }
             //TODO: Call Event Handler for Remaining Event Type
