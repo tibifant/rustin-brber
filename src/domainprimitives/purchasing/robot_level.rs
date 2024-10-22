@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::domainprimitives::location::mineable_resource_type::MineableResourceType;
+use crate::{domainprimitives::location::mineable_resource_type::MineableResourceType, robot::domain::robot::Robot};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum RobotLevel {
@@ -11,6 +11,12 @@ pub enum RobotLevel {
     LEVEL3,
     LEVEL4,
     LEVEL5,
+}
+
+impl RobotLevel {
+    pub fn default_level() -> RobotLevel {
+        return RobotLevel::LEVEL0;
+    }
 }
 
 impl<'de> Deserialize<'de> for RobotLevel {

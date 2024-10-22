@@ -6,14 +6,14 @@ use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RobotsRevealedLevelDto {
-    pub damage_level: u16,
-    pub energy_level: u16,
-    pub energy_regen_level: u16,
-    pub health_level: u16,
-    pub mining_level: u16,
-    pub mining_speed_level: u16,
-    #[serde(default)]
-    pub storage_level: u16,
+    pub damage_level: RobotLevel,
+    pub energy_level: RobotLevel,
+    pub energy_regen_level: RobotLevel,
+    pub health_level: RobotLevel,
+    pub mining_level: RobotLevel,
+    pub mining_speed_level: RobotLevel,
+    #[serde(default = "RobotLevel::default_level")]
+    pub storage_level: RobotLevel,
     #[serde(flatten)]
     extra: Option<Value>,
 }
