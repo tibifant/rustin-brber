@@ -1,31 +1,103 @@
-use serde::{Deserialize, Serialize};
-
-use crate::config::CONFIG;
-use crate::eventinfrastructure::map::planet_discovered_event;
+use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 use crate::repository::Identifiable;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct Robot {
-  robot_id: String,
-  planet_id: String,
+#[derive(Debug, Clone)]
+pub struct MinimalRobot {
+  pub robot_id: String,
+  pub planet_id: String,
+
+  pub energy: u16,
+  pub health: u16,
+
+  pub health_level: RobotLevel,
+  pub damage_level: RobotLevel,
+  pub mining_speed_level: RobotLevel,
+  pub mining_level: RobotLevel,
+  pub energy_level: RobotLevel,
+  pub energy_regen_level: RobotLevel,
+  pub storage_level: RobotLevel,
 }
 
-impl Robot {
-  pub fn new(robot_id: String, planet_id: String) -> Self {
+#[derive(Debug, Clone)]
+pub struct Inventory {
+  pub coal: u16,
+  pub iron: u16,
+  pub gold: u16,
+  pub gem: u16,
+  pub platin: u16,
+  pub full: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct Robot {
+  pub robot_info: MinimalRobot,
+  pub inventory: Inventory,
+  pub max_health: u16,
+  pub max_energy: u16,
+  pub energy_regen: u16,
+  pub attack_damage: u16,
+  pub mining_speed: u16,
+}
+
+impl MinimalRobot {
+  pub fn new(robot_id: String, planet_id: String, energy: u16, health: u16, health_level: RobotLevel, damage_level: RobotLevel, mining_speed_level: RobotLevel, mining_level: RobotLevel, energy_level: RobotLevel, energy_regen_level: RobotLevel, storage_level: RobotLevel) -> Self {
     Self {
       robot_id,
       planet_id,
+      energy,
+      health,
+      health_level,
+      damage_level,
+      mining_speed_level,
+      mining_level,
+      energy_level,
+      energy_regen_level,
+      storage_level,
+    }
+  }
+}
+
+impl Inventory {
+  pub fn new(coal: u16, iron: u16, gold: u16, gem: u16, platin: u16, full: bool) -> Self {
+    Self {
+      coal,
+      iron,
+      gold,
+      gem,
+      platin,
+      full,
+    }
+  }
+}
+
+impl Robot {
+  pub fn new(robot_info: MinimalRobot, inventory: Inventory, max_health: u16, max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16) -> Self {
+    Self {
+      robot_info,
+      inventory,
+      max_health,
+      max_energy,
+      energy_regen,
+      attack_damage,
+      mining_speed,
     }
   }
 
-  pub fn change_planet(&mut self, new_planet_id: String) {
-    self.planet_id = new_planet_id;
+  pub fn check_health(&self, robot_info: MinimalRobot) -> bool {
+    if robot_info.health == 0 {
+      return false;
+    }
+
+    return true;
+  }
+
+  pub fn update(&mut self, robot_info: MinimalRobot) {
+    self.robot_info = robot_info;
   }
 }
 
 impl Identifiable for Robot {
     fn id(&self) -> String {
-        return self.robot_id.clone();
+        return self.robot_info.robot_id.clone();
     }
 }

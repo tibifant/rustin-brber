@@ -3,6 +3,7 @@ use serde_json::Value;
 
 use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 
+#[derive(Copy, Clone)]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct RobotsRevealedLevelDto {

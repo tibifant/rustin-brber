@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{domainprimitives::location::mineable_resource_type::MineableResourceType, robot::domain::robot::Robot};
+use crate::domainprimitives::location::mineable_resource_type::MineableResourceType;
 
+#[derive(Copy, Clone)]
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum RobotLevel {
     LEVEL0,
