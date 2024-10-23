@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::domainprimitives::location::mineable_resource_type::MineableResourceType;
+use crate::{domainprimitives::location::mineable_resource_type::MineableResourceType, robot::domain::robot::Robot};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum RobotLevel {
@@ -13,19 +13,25 @@ pub enum RobotLevel {
     LEVEL5,
 }
 
+impl RobotLevel {
+    pub fn default_level() -> RobotLevel {
+        return RobotLevel::LEVEL0;
+    }
+}
+
 impl<'de> Deserialize<'de> for RobotLevel {
     fn deserialize<D>(deserializer: D) -> Result<RobotLevel, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s: String = Deserialize::deserialize(deserializer)?;
-        match s.as_str() {
-            "0" => Ok(RobotLevel::LEVEL0),
-            "1" => Ok(RobotLevel::LEVEL1),
-            "2" => Ok(RobotLevel::LEVEL2),
-            "3" => Ok(RobotLevel::LEVEL3),
-            "4" => Ok(RobotLevel::LEVEL4),
-            "5" => Ok(RobotLevel::LEVEL5),
+        let s: u16 = Deserialize::deserialize(deserializer)?;
+        match s {
+            0 => Ok(RobotLevel::LEVEL0),
+            1 => Ok(RobotLevel::LEVEL1),
+            2 => Ok(RobotLevel::LEVEL2),
+            3 => Ok(RobotLevel::LEVEL3),
+            4 => Ok(RobotLevel::LEVEL4),
+            5 => Ok(RobotLevel::LEVEL5),
             s => Err(serde::de::Error::custom(format!(
                 "Parse Error Invalid robot level: {} can only be between 0-5",
                 s
