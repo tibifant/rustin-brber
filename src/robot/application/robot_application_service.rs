@@ -65,24 +65,24 @@ impl RobotApplicationService {
 
         match own_player_id {
             Some(own_player_id) if own_player_id.starts_with(player_notion) => { // if robot belongs to us
-                //let r = self.robot_repository.get(&robot_info.robot_id);
+                let r = self.robot_repository.get(&robot_info.robot_id);
                 let robot_result = self.robot_repository.get(&robot_info.robot_id).await;
-                match robot_result {
-                    Ok(Some(mut robot)) => {
-                        if !robot.check_health(robot_info.clone()) { // returns false if health is 0
-                            let _ = self.robot_repository.delete(robot.id().as_str()).await;
-                        }
-                        else {
-                            robot.update(robot_info);
-                        }
-                    }
-                    Ok(None) => {
-                        info!("Robot not saved yet. Id: {}", robot_info.robot_id);
-                    }
-                    Err(e) => {
-                        println!("Error occurred whilst trying to get Robot: {}", e);
-                    }
-                }
+                //match robot_result {
+                //    Ok(Some(mut robot)) => {
+                //        if !robot.check_health(robot_info.clone()) { // returns false if health is 0
+                //            let _ = self.robot_repository.delete(robot.id().as_str()).await;
+                //        }
+                //        else {
+                //            robot.update(robot_info);
+                //        }
+                //    }
+                //    Ok(None) => {
+                //        info!("Robot not saved yet. Id: {}", robot_info.robot_id);
+                //    }
+                //    Err(e) => {
+                //        println!("Error occurred whilst trying to get Robot: {}", e);
+                //    }
+                //}
                 
             }
             Some(_) => { // if robot belongs to someone else
