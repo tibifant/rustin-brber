@@ -242,17 +242,17 @@ mod test {
 
     #[test]
     fn test_deserialize() {
-        let level0: RobotLevel = serde_json::from_str(r#""0""#).unwrap();
+        let level0: RobotLevel = serde_json::from_str(r#"0"#).unwrap();
         assert_eq!(level0, RobotLevel::LEVEL0);
-        let level1: RobotLevel = serde_json::from_str(r#""1""#).unwrap();
+        let level1: RobotLevel = serde_json::from_str(r#"1"#).unwrap();
         assert_eq!(level1, RobotLevel::LEVEL1);
-        let level2: RobotLevel = serde_json::from_str(r#""2""#).unwrap();
+        let level2: RobotLevel = serde_json::from_str(r#"2"#).unwrap();
         assert_eq!(level2, RobotLevel::LEVEL2);
-        let level3: RobotLevel = serde_json::from_str(r#""3""#).unwrap();
+        let level3: RobotLevel = serde_json::from_str(r#"3"#).unwrap();
         assert_eq!(level3, RobotLevel::LEVEL3);
-        let level4: RobotLevel = serde_json::from_str(r#""4""#).unwrap();
+        let level4: RobotLevel = serde_json::from_str(r#"4"#).unwrap();
         assert_eq!(level4, RobotLevel::LEVEL4);
-        let level5: RobotLevel = serde_json::from_str(r#""5""#).unwrap();
+        let level5: RobotLevel = serde_json::from_str(r#"5"#).unwrap();
         assert_eq!(level5, RobotLevel::LEVEL5);
     }
 }
