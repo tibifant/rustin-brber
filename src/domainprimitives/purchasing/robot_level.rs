@@ -169,6 +169,17 @@ impl RobotLevel {
             RobotLevel::LEVEL5 => 1000,
         }
     }
+
+    pub fn get_value_for_level(&self) -> u16 {
+        match self {
+            RobotLevel::LEVEL0 => 1,
+            RobotLevel::LEVEL1 => 2,
+            RobotLevel::LEVEL2 => 3,
+            RobotLevel::LEVEL3 => 4,
+            RobotLevel::LEVEL4 => 5,
+            RobotLevel::LEVEL5 => 6,            
+        }
+    }
 }
 
 #[cfg(test)]

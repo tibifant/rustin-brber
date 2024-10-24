@@ -94,6 +94,10 @@ impl Robot {
   pub fn update(&mut self, robot_info: MinimalRobot) {
     self.robot_info = robot_info;
   }
+
+  pub fn get_inventory_value(&self) -> u16 {
+    return self.inventory.coal + self.inventory.gem + self.inventory.gold + self.inventory.iron + self.inventory.platin;
+  }
 }
 
 impl Identifiable for Robot {
