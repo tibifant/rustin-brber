@@ -3,7 +3,7 @@ use crate::repository::Identifiable;
 
 #[derive(Debug, Clone)]
 pub struct MinimalRobot {
-  pub robot_id: String,
+  pub id: String,
   pub planet_id: String,
 
   pub energy: u16,
@@ -40,9 +40,9 @@ pub struct Robot {
 }
 
 impl MinimalRobot {
-  pub fn new(robot_id: String, planet_id: String, energy: u16, health: u16, health_level: RobotLevel, damage_level: RobotLevel, mining_speed_level: RobotLevel, mining_level: RobotLevel, energy_level: RobotLevel, energy_regen_level: RobotLevel, storage_level: RobotLevel) -> Self {
+  pub fn new(id: String, planet_id: String, energy: u16, health: u16, health_level: RobotLevel, damage_level: RobotLevel, mining_speed_level: RobotLevel, mining_level: RobotLevel, energy_level: RobotLevel, energy_regen_level: RobotLevel, storage_level: RobotLevel) -> Self {
     Self {
-      robot_id,
+      id,
       planet_id,
       energy,
       health,
@@ -67,6 +67,10 @@ impl Inventory {
       platin,
       full,
     }
+  }
+
+  pub fn get_inventory_value(&self) -> u16 {
+    return self.coal + self.gem + self.gold + self.iron + self.platin;
   }
 }
 
@@ -94,14 +98,10 @@ impl Robot {
   pub fn update(&mut self, robot_info: MinimalRobot) {
     self.robot_info = robot_info;
   }
-
-  pub fn get_inventory_value(&self) -> u16 {
-    return self.inventory.coal + self.inventory.gem + self.inventory.gold + self.inventory.iron + self.inventory.platin;
-  }
 }
 
 impl Identifiable for Robot {
     fn id(&self) -> String {
-        return self.robot_info.robot_id.clone();
+        return self.robot_info.id.clone();
     }
 }

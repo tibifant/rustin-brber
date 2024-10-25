@@ -67,16 +67,17 @@ pub struct Planet {
   pub south: String,
 }
 
-pub enum RobotState {
-  Mining,
-  Attacking,
-  // idk that's not what is supposed to be here....
-}
-
 pub struct PermanetRobotInfo {
   pub id: String,
-  pub action: Box<dyn Action>,
-  pub purchase: bool,
+  pub action: Arc<dyn Action>,
+  pub upgrade_action: Arc<dyn Action>,
+  pub upgrade: bool,
+  pub max_health: u16,
+  pub max_energy: u16,
+  pub energy_regen: u16,
+  pub attack_damage: u16,
+  pub mining_speed: u16,
+  pub inventory: Inventory,
 }
 
 pub struct RoundData {
@@ -115,8 +116,8 @@ impl GameLogic {
     self.game_data.robot_buy_amount = 0;
 
     for (id, robot) in &mut self.game_data.robots {
-      robot.action = Box::new(NoneAction::new());
-      robot.purchase = false;
+      robot.action = Arc::new(NoneAction::new());
+      robot.upgrade = false;
     }
 
     let ids: Vec<String> = self.game_data.robots.keys().cloned().collect();
@@ -147,10 +148,10 @@ impl GameLogic {
           Some(planet) => {
             for (e_id, e) in &self.round_data.enemy_robots {
               if e.robot_info.planet_id == robot.robot_info.planet_id {
-                let weight: f32 = (robot.robot_info.damage_level.get_attack_damage_value_for_level() - e.robot_info.damage_level.get_attack_damage_value_for_level()) as f32;
+                let weight: f32 = (robot_info.attack_damage - e.robot_info.damage_level.get_attack_damage_value_for_level()) as f32;
 
                 if robot_info.action.get_weight() < weight {
-                  let attack_option = Box::new(AttackAction::new(weight, e_id.to_string()));
+                  let attack_option = Arc::new(AttackAction::new(weight, e_id.to_string()));
                   robot_info.action = attack_option;
                 }
                 break;
@@ -206,14 +207,14 @@ impl GameLogic {
                 let weight = (best_price + (best_planet_amount as i64)) as f32;
 
                 if robot_info.action.get_weight() < weight {
-                  let movement_option = Box::new(MovementAction::new(weight, best_planet));
+                  let movement_option = Arc::new(MovementAction::new(weight, best_planet));
                   robot_info.action = movement_option;
                 }
               } else {
                 let weight = ((planet.current_amount as i64) + best_price)  as f32;
 
                 if robot_info.action.get_weight() < weight {
-                  let mining_option = Box::new(MineAction::new(weight, planet.id.to_string()));
+                  let mining_option = Arc::new(MineAction::new(weight, planet.id.to_string()));
                   robot_info.action = mining_option;
                 }
               }
@@ -228,9 +229,9 @@ impl GameLogic {
   fn offer_sell_option(&mut self, robot_id: String) {
     if let Some(robot_info) = self.game_data.robots.get_mut(&robot_id) {
       if let Some(robot) = self.round_data.robots.get(robot_info.id.as_str()) {
-        let inventory_weight = 0.1 * (((robot.max_health - robot.robot_info.health) as i64) * (robot.inventory.coal as i64) * self.round_data.resource_prices.get(&ResourceType::Coal).unwrap_or(&0) + (robot.inventory.gem as i64) * self.round_data.resource_prices.get(&ResourceType::Gem).unwrap_or(&0) + (robot.inventory.gold  as i64) * self.round_data.resource_prices.get(&ResourceType::Gold).unwrap_or(&0)+ (robot.inventory.iron as i64) * self.round_data.resource_prices.get(&ResourceType::Iron).unwrap_or(&0) + (robot.inventory.platin as i64) * self.round_data.resource_prices.get(&ResourceType::Platin).unwrap_or(&0)) as f32;
+        let inventory_weight = 0.1 * (((robot_info.max_health - robot.robot_info.health) as i64) * (robot_info.inventory.coal as i64) * self.round_data.resource_prices.get(&ResourceType::Coal).unwrap_or(&0) + (robot_info.inventory.gem as i64) * self.round_data.resource_prices.get(&ResourceType::Gem).unwrap_or(&0) + (robot_info.inventory.gold  as i64) * self.round_data.resource_prices.get(&ResourceType::Gold).unwrap_or(&0)+ (robot_info.inventory.iron as i64) * self.round_data.resource_prices.get(&ResourceType::Iron).unwrap_or(&0) + (robot_info.inventory.platin as i64) * self.round_data.resource_prices.get(&ResourceType::Platin).unwrap_or(&0)) as f32;
         if inventory_weight > robot_info.action.get_weight() {
-          let inventory_option = Box::new(SellAction::new(inventory_weight as f32));
+          let inventory_option = Arc::new(SellAction::new(inventory_weight as f32));
           robot_info.action = inventory_option;
         }
       }
@@ -240,65 +241,68 @@ impl GameLogic {
   fn spend_money(&mut self) -> bool {
     let mut best_weight: i64 = 0;
     let mut best_item = TradeItemType::Robot;
-    let mut best_robot_info: Option<&mut PermanetRobotInfo> = None;
+    let mut best_id: Option<String> = None;
 
-    for (id, robot_info) in &mut self.game_data.robots {
-      if let Some(robot) = self.round_data.robots.get(&id.to_string()) {
-        if !robot_info.purchase {
-          if let Some(health_price) = self.round_data.item_prices.get(&TradeItemType::HealthRestore) {
-            if self.round_data.balance >= *health_price {
-              let weight = (robot.max_health - robot.robot_info.health) * robot.robot_info.health_level.get_value_for_level() + robot.robot_info.damage_level.get_value_for_level() + robot.robot_info.mining_speed_level.get_value_for_level();
-              let item = TradeItemType::HealthRestore;
-
-              if weight as i64 > best_weight {
-                best_weight = weight as i64;
-                best_item = item;
-                best_robot_info = Some(robot_info);
-              }
-
-              if best_weight < 50 && *health_price > 10 + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0){
-                if (1000 > best_weight) {
-                  best_item = TradeItemType::Robot;
-                  best_weight = 1000;
+    let ids: Vec<String> = self.game_data.robots.keys().cloned().collect();
+    for id in ids {
+      if let Some(robot_info) = self.game_data.robots.get(&id) {
+        if let Some(robot) = self.round_data.robots.get(&id) {
+          if !robot_info.upgrade {
+            if let Some(health_price) = self.round_data.item_prices.get(&TradeItemType::HealthRestore) {
+              if self.round_data.balance >= *health_price {
+                let weight = (robot_info.max_health - robot.robot_info.health) * robot.robot_info.health_level.get_value_for_level() + robot.robot_info.damage_level.get_value_for_level() + robot.robot_info.mining_speed_level.get_value_for_level();
+                let item = TradeItemType::HealthRestore;
+              
+                if weight as i64 > best_weight {
+                  best_weight = weight as i64;
+                  best_item = item;
+                  best_id = Some(id.clone());
                 }
-              } 
-            }
-          }
-          if let Some(energy_price) = self.round_data.item_prices.get(&TradeItemType::EnergyRestore) {
-            if self.round_data.balance >= *energy_price {
-              let weight = (robot.max_energy - robot.robot_info.energy) * robot.robot_info.energy_level.get_value_for_level() * robot.robot_info.damage_level.get_value_for_level() * robot.robot_info.mining_speed_level.get_value_for_level();
-              let item = TradeItemType::EnergyRestore;
-
-              if weight as i64 > best_weight {
-                best_weight = weight as i64;
-                best_item = item;
-                best_robot_info = Some(robot_info);
+              
+                if best_weight < 50 && *health_price > 10 + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0){
+                  if (1000 > best_weight) {
+                    best_item = TradeItemType::Robot;
+                    best_weight = 1000;
+                  }
+                } 
               }
-              if best_weight < 50 && *energy_price > 10 + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) {
-                if (1000 > best_weight) {
-                  best_item = TradeItemType::Robot;
-                  best_weight = 1000;
-                }
-              } 
             }
-          }
-          if let Some(planet) = self.game_data.planets.get(robot.robot_info.planet_id.as_str()) {
-            if !robot.robot_info.storage_level.is_maximum_level() {
-              if let Some(ressource_price) = self.round_data.resource_prices.get(&planet.resource) {
-                if self.round_data.balance >= *ressource_price {
-                  let weight = (planet.current_amount as i64) * ressource_price + robot.get_inventory_value() as i64;
-                  let item = TradeItemType::Storage1;
-
-                  if weight > best_weight {
-                    best_weight = weight;
-                    best_item = item;
-                    best_robot_info = Some(robot_info);
+            if let Some(energy_price) = self.round_data.item_prices.get(&TradeItemType::EnergyRestore) {
+              if self.round_data.balance >= *energy_price {
+                let weight = (robot_info.max_energy - robot.robot_info.energy) * robot.robot_info.energy_level.get_value_for_level() * robot.robot_info.damage_level.get_value_for_level() * robot.robot_info.mining_speed_level.get_value_for_level();
+                let item = TradeItemType::EnergyRestore;
+              
+                if weight as i64 > best_weight {
+                  best_weight = weight as i64;
+                  best_item = item;
+                  best_id = Some(id.clone());
+                }
+                if best_weight < 50 && *energy_price > 10 + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) {
+                  if (1000 > best_weight) {
+                    best_item = TradeItemType::Robot;
+                    best_weight = 1000;
+                  }
+                } 
+              }
+            }
+            if let Some(planet) = self.game_data.planets.get(robot.robot_info.planet_id.as_str()) {
+              if !robot.robot_info.storage_level.is_maximum_level() {
+                if let Some(ressource_price) = self.round_data.resource_prices.get(&planet.resource) {
+                  if self.round_data.balance >= *ressource_price {
+                    let weight = (planet.current_amount as i64) * ressource_price + robot_info.inventory.get_inventory_value() as i64;
+                    let item = TradeItemType::Storage1;
+                  
+                    if weight > best_weight {
+                      best_weight = weight;
+                      best_item = item;
+                      best_id = Some(id.clone());
+                    }
                   }
                 }
               }
             }
+            // Posibility to implement other upgrade options here
           }
-          // Posibility to implement other upgrade options here
         }
       }
     }
@@ -317,16 +321,17 @@ impl GameLogic {
         return true;
       }
 
-      if let Some(best_robot) = best_robot_info {
-        if best_weight as f32 > best_robot.action.get_weight() {
-          best_robot.action = Box::new(PurchaseAction::new(best_weight as f32, best_item));
-          best_robot.purchase = true;
-          self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000);
-          return true;
+      if let Some(id) = best_id {
+        if let Some(best_robot) = self.game_data.robots.get_mut(&id) {
+          if best_weight as f32 > best_robot.action.get_weight() {
+            best_robot.action = Arc::new(PurchaseAction::new(best_weight as f32, best_item));
+            best_robot.upgrade = true;
+            self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000);
+            return true;
+          }
         }
       }
     }
-
     return false;
   }
 }

@@ -44,9 +44,9 @@ impl RobotApplicationService {
         match own_player_id {
             Some(own_player_id) if own_player_id == player_id => {
                 let _ = self.robot_repository.add(robot.clone());
-                info!("====> added robot -------!!!!!!!!\nwith id: {}", robot.robot_info.robot_id);
+                info!("====> added robot -------!!!!!!!!\nwith id: {}", robot.robot_info.id);
                 info!("robot id {}", robot.id());
-                let robot_result = self.robot_repository.get(&robot.robot_info.robot_id);
+                let robot_result = self.robot_repository.get(&robot.robot_info.id);
                 info!("!");
             }
             Some(_) => { 
@@ -65,8 +65,8 @@ impl RobotApplicationService {
 
         match own_player_id {
             Some(own_player_id) if own_player_id.starts_with(player_notion) => { // if robot belongs to us
-                let r = self.robot_repository.get(&robot_info.robot_id);
-                let robot_result = self.robot_repository.get(&robot_info.robot_id).await;
+                let r = self.robot_repository.get(&robot_info.id);
+                let robot_result = self.robot_repository.get(&robot_info.id).await;
                 //match robot_result {
                 //    Ok(Some(mut robot)) => {
                 //        if !robot.check_health(robot_info.clone()) { // returns false if health is 0
