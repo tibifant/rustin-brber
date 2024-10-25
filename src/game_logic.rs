@@ -111,25 +111,26 @@ pub struct GameLogic {
 
 impl GameLogic {
   pub fn round_move(&mut self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>) {
-    self.game_data.robot_buy_amount = 0;
-    for (id, robot) in self.game_data.robots.iter_mut() {
+    self.game_data.robot_buy_amount = 0; // reset value from last round
+
+    for (id, robot) in &mut self.game_data.robots {
       robot.action = Box::new(NoneAction::new()); // reset robot decision
       robot.purchase = false;
-      self.offer_movement_mining_attack_option(robot);
-      self.offer_sell_option(robot);
+      self.offer_movement_mining_attack_option(robot); // evaluate options
+      self.offer_sell_option(robot); // evaluate options
     }
     
     while self.round_data.balance > 0 {
-      if !self.spend_money() {
+      if !self.spend_money() { // evaluate options
         break;
       }
     }
 
-    for (id, robot) in self.game_data.robots {
-      robot.action.execute_command(game_service_rest_adapter, self.game_data.player_id, robot.id);
+    for (id, robot) in &mut self.game_data.robots {
+      robot.action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()); // execute best option
     }
 
-    self.execute_puchase_robots_command(game_service_rest_adapter, self.game_data.player_id, self.game_data.robot_buy_amount);
+    execute_purchase_robots_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), self.game_data.robot_buy_amount);
   }
 
   fn offer_movement_mining_attack_option(&self, robot_info: &mut PermanetRobotInfo) {
@@ -222,7 +223,7 @@ impl GameLogic {
     }
   }
 
-  fn offer_sell_option(&self, mut robot_info: PermanetRobotInfo) {
+  fn offer_sell_option(&self, robot_info: &mut PermanetRobotInfo) {
     if let Some(robot) = self.round_data.robots.get(robot_info.id.as_str()) {
       let inventory_weight = 0.1 * (((robot.max_health - robot.robot_info.health) as i64) * (robot.inventory.coal as i64) * self.round_data.resource_prices.get(&ResourceType::Coal).unwrap_or(&0) + (robot.inventory.gem as i64) * self.round_data.resource_prices.get(&ResourceType::Gem).unwrap_or(&0) + (robot.inventory.gold  as i64) * self.round_data.resource_prices.get(&ResourceType::Gold).unwrap_or(&0)+ (robot.inventory.iron as i64) * self.round_data.resource_prices.get(&ResourceType::Iron).unwrap_or(&0) + (robot.inventory.platin as i64) * self.round_data.resource_prices.get(&ResourceType::Platin).unwrap_or(&0)) as f32;
       if inventory_weight > robot_info.action.get_weight() {
@@ -326,10 +327,10 @@ impl GameLogic {
 
     return false;
   }
+}
 
-  pub fn execute_puchase_robots_command(game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, amount: u16) {
-
-  }
+pub fn execute_purchase_robots_command(game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, amount: u16) {
+  println!(" ");
 }
 
 pub trait Action {
