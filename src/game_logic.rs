@@ -2,6 +2,7 @@ use std::{collections::HashMap, hash::Hash};
 
 use std::sync::Arc;
 
+use crate::domainprimitives::purchasing::robot_upgrade_type::RobotUpgradeType;
 use crate::{rest::{game_service_rest_adapter_impl::{self, GameServiceRestAdapterImpl}, game_service_rest_adapter_trait::GameServiceRestAdapterTrait}, robot::domain::robot::{Inventory, MinimalRobot, Robot}};
 
 #[derive(Eq, Hash, PartialEq, Clone, Copy)]
@@ -46,6 +47,62 @@ pub enum TradeItemType {
   Robot,
 }
 
+impl TradeItemType {
+  pub fn get_next_level_item(upgrade_type: RobotUpgradeType, current_level: u16) -> Option<TradeItemType> {
+    match upgrade_type {
+        RobotUpgradeType::Storage => match current_level {
+            1 => Some(TradeItemType::Storage2),
+            2 => Some(TradeItemType::Storage3),
+            3 => Some(TradeItemType::Storage4),
+            4 => Some(TradeItemType::Storage5),
+            _ => None,
+        },
+        RobotUpgradeType::Health => match current_level {
+            1 => Some(TradeItemType::Health2),
+            2 => Some(TradeItemType::Health3),
+            3 => Some(TradeItemType::Health4),
+            4 => Some(TradeItemType::Health5),
+            _ => None,
+        },
+        RobotUpgradeType::Damage => match current_level {
+            1 => Some(TradeItemType::Damage2),
+            2 => Some(TradeItemType::Damage3),
+            3 => Some(TradeItemType::Damage4),
+            4 => Some(TradeItemType::Damage5),
+            _ => None,
+        },
+        RobotUpgradeType::MiningSpeed => match current_level {
+            1 => Some(TradeItemType::MiningSpeed2),
+            2 => Some(TradeItemType::MiningSpeed3),
+            3 => Some(TradeItemType::MiningSpeed4),
+            4 => Some(TradeItemType::MiningSpeed5),
+            _ => None,
+        },
+        RobotUpgradeType::Mining => match current_level {
+            1 => Some(TradeItemType::Mining2),
+            2 => Some(TradeItemType::Mining3),
+            3 => Some(TradeItemType::Mining4),
+            4 => Some(TradeItemType::Mining5),
+            _ => None,
+        },
+        RobotUpgradeType::MaxEnergy => match current_level {
+            1 => Some(TradeItemType::MaxEnergy2),
+            2 => Some(TradeItemType::MaxEnergy3),
+            3 => Some(TradeItemType::MaxEnergy4),
+            4 => Some(TradeItemType::MaxEnergy5),
+            _ => None,
+        },
+        RobotUpgradeType::EnergyRegen => match current_level {
+            1 => Some(TradeItemType::EnergyRegen2),
+            2 => Some(TradeItemType::EnergyRegen3),
+            3 => Some(TradeItemType::EnergyRegen4),
+            4 => Some(TradeItemType::EnergyRegen5),
+            _ => None,
+        },
+    }
+  }
+}
+
 #[derive(Eq, Hash, PartialEq)]
 pub enum ResourceType {
   Gold,
@@ -70,6 +127,7 @@ pub struct Planet {
 pub struct PermanetRobotInfo {
   pub id: String,
   pub action: Arc<dyn Action>,
+  pub regen: bool,
   pub upgrade_action: Arc<dyn Action>,
   pub upgrade: bool,
   pub max_health: u16,
@@ -82,7 +140,7 @@ pub struct PermanetRobotInfo {
 
 pub struct RoundData {
   pub robots: HashMap<String, Robot>,
-  pub enemy_robots: HashMap<String, Robot>, //idk we can add the robot when it spawns as full robot i guess...
+  pub enemy_robots: HashMap<String, Robot>, //TODO either make this MinimalRobot or have a PermanentRobot in the GameData with the other values
   pub planets: HashMap<String, Planet>,
   pub balance: i64,
   pub item_prices: HashMap<TradeItemType, i64>,
@@ -118,6 +176,8 @@ impl GameLogic {
     for (id, robot) in &mut self.game_data.robots {
       robot.action = Arc::new(NoneAction::new());
       robot.upgrade = false;
+      robot.upgrade_action = Arc::new(NoneAction::new());
+      robot.regen = false;
     }
 
     let ids: Vec<String> = self.game_data.robots.keys().cloned().collect();
@@ -242,12 +302,13 @@ impl GameLogic {
     let mut best_weight: i64 = 0;
     let mut best_item = TradeItemType::Robot;
     let mut best_id: Option<String> = None;
+    let mut is_upgrade = false;
 
     let ids: Vec<String> = self.game_data.robots.keys().cloned().collect();
     for id in ids {
       if let Some(robot_info) = self.game_data.robots.get(&id) {
         if let Some(robot) = self.round_data.robots.get(&id) {
-          if !robot_info.upgrade {
+          if !robot_info.regen {
             if let Some(health_price) = self.round_data.item_prices.get(&TradeItemType::HealthRestore) {
               if self.round_data.balance >= *health_price {
                 let weight = (robot_info.max_health - robot.robot_info.health) * robot.robot_info.health_level.get_value_for_level() + robot.robot_info.damage_level.get_value_for_level() + robot.robot_info.mining_speed_level.get_value_for_level();
@@ -257,12 +318,14 @@ impl GameLogic {
                   best_weight = weight as i64;
                   best_item = item;
                   best_id = Some(id.clone());
+                  is_upgrade = false;
                 }
               
                 if best_weight < 50 && *health_price > 10 + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0){
                   if (1000 > best_weight) {
                     best_item = TradeItemType::Robot;
                     best_weight = 1000;
+                    is_upgrade = false;
                   }
                 } 
               }
@@ -276,32 +339,41 @@ impl GameLogic {
                   best_weight = weight as i64;
                   best_item = item;
                   best_id = Some(id.clone());
+                  is_upgrade = false;
                 }
                 if best_weight < 50 && *energy_price > 10 + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) {
                   if (1000 > best_weight) {
                     best_item = TradeItemType::Robot;
                     best_weight = 1000;
+                    is_upgrade = false;
                   }
                 } 
               }
             }
+          }
+
+          if !robot_info.upgrade {
             if let Some(planet) = self.game_data.planets.get(robot.robot_info.planet_id.as_str()) {
               if !robot.robot_info.storage_level.is_maximum_level() {
-                if let Some(ressource_price) = self.round_data.resource_prices.get(&planet.resource) {
-                  if self.round_data.balance >= *ressource_price {
-                    let weight = (planet.current_amount as i64) * ressource_price + robot_info.inventory.get_inventory_value() as i64;
-                    let item = TradeItemType::Storage1;
-                  
-                    if weight > best_weight {
-                      best_weight = weight;
-                      best_item = item;
-                      best_id = Some(id.clone());
+                if let Some(next_level_item) = TradeItemType::get_next_level_item(RobotUpgradeType::Storage, robot.robot_info.storage_level.get_value_for_level()) {
+                  if let Some(item_price) = self.round_data.item_prices.get(&next_level_item) {
+                    if self.round_data.balance >= *item_price {
+                      if let Some(ressource_price) = self.round_data.resource_prices.get(&planet.resource) {
+                        let weight = (planet.current_amount as i64) * ressource_price + robot_info.inventory.get_inventory_value() as i64;                        
+                        if weight > best_weight {
+                          best_weight = weight;
+                          best_item = next_level_item;
+                          best_id = Some(id.clone());
+                          is_upgrade = true;
+                        }
+                      }
                     }
                   }
                 }
               }
             }
             // Posibility to implement other upgrade options here
+            // TODO implement MiningSpeed or something
           }
         }
       }
@@ -323,8 +395,16 @@ impl GameLogic {
 
       if let Some(id) = best_id {
         if let Some(best_robot) = self.game_data.robots.get_mut(&id) {
-          if best_weight as f32 > best_robot.action.get_weight() {
-            best_robot.action = Arc::new(PurchaseAction::new(best_weight as f32, best_item));
+          if !is_upgrade {
+            if best_weight as f32 > best_robot.action.get_weight() {
+              best_robot.action = Arc::new(PurchaseAction::new(best_weight as f32, best_item));
+              best_robot.regen = true;
+              self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000);
+              return true;
+            }
+          }
+          else {
+            best_robot.upgrade_action = Arc::new(PurchaseAction::new(best_weight as f32, best_item));
             best_robot.upgrade = true;
             self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000);
             return true;
