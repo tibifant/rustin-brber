@@ -75,7 +75,7 @@ impl RabbitMQConsumer {
         }
     }
 
-    async fn handle_event(&self, game_event: GameEvent) {
+    async fn handle_event(&mut self, game_event: GameEvent) {
         self.event_dispatcher.dispatch(game_event).await;
     }
 }

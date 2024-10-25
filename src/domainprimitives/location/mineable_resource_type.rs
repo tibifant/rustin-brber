@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Eq, Hash, PartialEq, Copy, Clone)]
 pub enum MineableResourceType {
     COAL,
     IRON,

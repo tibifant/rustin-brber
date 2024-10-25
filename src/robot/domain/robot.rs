@@ -26,6 +26,8 @@ pub struct Inventory {
   pub gem: u16,
   pub platin: u16,
   pub full: bool,
+  pub used_storage: u16,
+  pub max_storage: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -37,6 +39,7 @@ pub struct Robot {
   pub energy_regen: u16,
   pub attack_damage: u16,
   pub mining_speed: u16,
+  pub player_id: String
 }
 
 impl MinimalRobot {
@@ -58,7 +61,7 @@ impl MinimalRobot {
 }
 
 impl Inventory {
-  pub fn new(coal: u16, iron: u16, gold: u16, gem: u16, platin: u16, full: bool) -> Self {
+  pub fn new(coal: u16, iron: u16, gold: u16, gem: u16, platin: u16, full: bool, used_storage: u16, max_storage: u16) -> Self {
     Self {
       coal,
       iron,
@@ -66,16 +69,14 @@ impl Inventory {
       gem,
       platin,
       full,
+      used_storage,
+      max_storage,
     }
-  }
-
-  pub fn get_inventory_value(&self) -> u16 {
-    return self.coal + self.gem + self.gold + self.iron + self.platin;
   }
 }
 
 impl Robot {
-  pub fn new(robot_info: MinimalRobot, inventory: Inventory, max_health: u16, max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16) -> Self {
+  pub fn new(robot_info: MinimalRobot, inventory: Inventory, max_health: u16, max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16, player_id: String) -> Self {
     Self {
       robot_info,
       inventory,
@@ -84,6 +85,7 @@ impl Robot {
       energy_regen,
       attack_damage,
       mining_speed,
+      player_id,
     }
   }
 

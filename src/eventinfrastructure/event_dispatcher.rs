@@ -13,10 +13,10 @@ use crate::player::application::player_application_service::PlayerApplicationSer
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
 pub struct EventDispatcher {
-    game_status_event_handler: Arc<GameStatusEventHandler>,
-    round_status_event_handler: Arc<RoundStatusEventHandler>,
-    robot_spawned_event_handler: Arc<RobotSpawnedEventHandler>,
-    robots_revealed_event_handler: Arc<RobotsRevealedEventHandler>,
+    game_status_event_handler: GameStatusEventHandler,
+    round_status_event_handler: RoundStatusEventHandler,
+    robot_spawned_event_handler: RobotSpawnedEventHandler,
+    robots_revealed_event_handler: RobotsRevealedEventHandler,
 }
 
 impl EventDispatcher {
@@ -27,44 +27,42 @@ impl EventDispatcher {
         robot_application_service: Arc<RobotApplicationService>,
     ) -> Self {
         Self {
-            game_status_event_handler: Arc::new(GameStatusEventHandler::new(
+            game_status_event_handler: GameStatusEventHandler::new(
                 game_service_rest_adapter.clone(),
                 game_application_service.clone(),
                 player_application_service.clone(),
-            )),
-            round_status_event_handler: Arc::new(RoundStatusEventHandler::new(
+            ),
+            round_status_event_handler: RoundStatusEventHandler::new(
                 game_service_rest_adapter.clone(),
                 game_application_service.clone(),
-            )),
-            robot_spawned_event_handler: Arc::new(RobotSpawnedEventHandler::new(
-                robot_application_service.clone(),
-            )),
-            robots_revealed_event_handler: Arc::new(RobotsRevealedEventHandler::new(
-                robot_application_service.clone(),
-            ))
+            ),
+            robot_spawned_event_handler: RobotSpawnedEventHandler::new(
+                robot_application_service.clone(), // this needs game_logic now... we will see
+            ),
+            robots_revealed_event_handler: RobotsRevealedEventHandler::new(
+                robot_application_service.clone(), // this needs game_logic now... we will see
+            )
             //TODO: add Event Handler for remaining Events
         }
     }
-    pub async fn dispatch(&self, event: GameEvent) {
+    pub async fn dispatch(&mut self, event: GameEvent) {
         match event.event_body {
             GameEventBodyType::GameStatus(game_status_event) => {
                 self.game_status_event_handler
-                    .handle(game_status_event)
-                    .await;
+                    .handle(game_status_event);
             }
             GameEventBodyType::RoundStatus(round_status_event) => {
                 self.round_status_event_handler
-                    .handle(round_status_event)
-                    .await;
+                    .handle(round_status_event);
             }
             GameEventBodyType::RobotSpawned(robot_spawned_event) => {
-                self.robot_spawned_event_handler.handle(robot_spawned_event).await;
+                self.robot_spawned_event_handler.handle(robot_spawned_event);
             }
             GameEventBodyType::RobotsRevealed(robots_revealed_event) => {
-                self.robots_revealed_event_handler.handle(robots_revealed_event).await;
+                self.robots_revealed_event_handler.handle(robots_revealed_event);
             }
             GameEventBodyType::PlanetResourceMined(planet_resource_mined_event) => {
-                // TODO: add handler here
+                self.resource_mined_event_handler.handle(planet_resource_mined_event);
             }
             //TODO: Call Event Handler for Remaining Event Type
             // handlers for other events
