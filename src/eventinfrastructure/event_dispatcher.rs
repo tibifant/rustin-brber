@@ -12,6 +12,9 @@ use crate::robot::application::robots_revealed_event_handler::RobotsRevealedEven
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
+use super::robot::robot_resource_mined_event;
+use super::trading::bank_account_initialized_event;
+
 pub struct EventDispatcher {
     game_status_event_handler: GameStatusEventHandler,
     round_status_event_handler: RoundStatusEventHandler,
@@ -64,6 +67,19 @@ impl EventDispatcher {
             GameEventBodyType::PlanetResourceMined(planet_resource_mined_event) => {
                 self.resource_mined_event_handler.handle(planet_resource_mined_event);
             }
+            GameEventBodyType::PlanetDiscovered(planet_discovered_event) => {
+                self.planet_discovered_handler.handle(planet_discovered_event);
+            }
+            GameEventBodyType::RobotResourceMined(robot_resource_mined_event) => {
+                self.robot_resource_mined_handler.handle(robot_resource_mined_event);
+            }
+            GameEventBodyType::RobotResourceRemoved(robot_resource_removed_event) => {
+                self.robot_resource_removed_handler.handle(robot_resource_removed_event);
+            }
+            GameEventBodyType::BankAccountInitialized(bank_account_initialized_event) => {
+                self.bank_account_init_handler.handle(bank_account_initialized_event);
+            }
+
             //TODO: Call Event Handler for Remaining Event Type
             // handlers for other events
             _ => {}

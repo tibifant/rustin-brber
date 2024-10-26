@@ -3,11 +3,18 @@ use std::{collections::HashMap, hash::Hash};
 
 use std::sync::Arc;
 
+use crate::domainprimitives::location::compass_direction_dto::CompassDirection;
 use crate::eventinfrastructure::event_handler::EventHandler;
+use crate::eventinfrastructure::map::planet_discovered_event::PlanetDiscoveredEvent;
 use crate::eventinfrastructure::map::planet_resource_mined_event::PlanetResourceMinedEvent;
+use crate::eventinfrastructure::robot::robot_resource_mined_event::RobotResourceMinedEvent;
+use crate::eventinfrastructure::robot::robot_resource_removed_event::RobotResourceRemovedEvent;
 use crate::eventinfrastructure::robot::robots_revealed_event::RobotsRevealedEvent;
 use crate::eventinfrastructure::robot::robot_spawned_event::RobotSpawnedEvent;
 use crate::domainprimitives::purchasing::robot_upgrade_type::RobotUpgradeType;
+use crate::eventinfrastructure::trading::bank_account_initialized_event::BankAccountInitializedEvent;
+use crate::eventinfrastructure::trading::bank_account_transaction_booked::BankAccountTransactionBookedEvent;
+use crate::eventinfrastructure::trading::tradable_prices_event::TradablePricesEvent;
 use crate::{rest::{game_service_rest_adapter_impl::{self, GameServiceRestAdapterImpl}, game_service_rest_adapter_trait::GameServiceRestAdapterTrait}, robot::domain::robot::{Inventory, MinimalRobot, Robot}};
 use crate::domainprimitives::location::mineable_resource_type::MineableResourceType;
 
@@ -111,19 +118,13 @@ impl TradeItemType {
 
 pub struct Planet {
   pub id: String,
-  pub movement_difficulty: u16,
-  pub resource: MineableResourceType,
-  pub max_amount: u64,
-  pub current_amount: u64,
+  pub current_amount: u32,
 }
 
 impl Planet {
-  pub fn new(id: String, movement_difficulty: u16, resource: MineableResourceType, max_amount: u64, current_amount: u64) -> Self {
+  pub fn new(id: String, current_amount: u32) -> Self {
     Self {
       id,
-      movement_difficulty,
-      resource,
-      max_amount,
       current_amount,
     }
   }
@@ -131,13 +132,30 @@ impl Planet {
 
 pub struct PermanentPlanetInfo {
   pub id: String,
-  pub movement_difficulty: u16,
+  pub movement_difficulty: u8,
   pub resource: MineableResourceType,
-  pub max_amount: u64,
+  pub max_amount: u32,
+  pub last_known_amount: u32,
   pub north: String,
   pub east: String,
   pub west: String,
-  pub south: String,
+  pub south: String,                  
+}
+
+impl PermanentPlanetInfo {
+  pub fn new(id: String, movement_difficulty: u8, resource: MineableResourceType, max_amount: u32, last_known_amount: u32, north: String, east: String, west: String, south: String) -> Self {
+    Self {
+      id,
+      movement_difficulty,
+      resource,
+      max_amount,
+      last_known_amount,
+      north,
+      east,
+      west,
+      south,
+    }
+  }
 }
 
 pub struct PermanetRobotInfo {
@@ -178,13 +196,13 @@ pub struct RoundData {
   pub robots: HashMap<String, MinimalRobot>,
   pub enemy_robots: HashMap<String, MinimalRobot>, //TODO either make this MinimalRobot or have a PermanentRobot in the GameData with the other values
   pub planets: HashMap<String, Planet>,
-  pub balance: i64,
-  pub item_prices: HashMap<TradeItemType, i64>,
-  pub resource_prices: HashMap<MineableResourceType, i64>,
+  pub balance: f32,
+  pub item_prices: HashMap<TradeItemType, f32>,
+  pub resource_prices: HashMap<MineableResourceType, f32>,
 }
 
 pub struct GameData {
-  pub planets: HashMap<String, Planet>,
+  pub planets: HashMap<String, PermanentPlanetInfo>,
   pub robots: HashMap<String, PermanetRobotInfo>,
   pub player_id: String,
   pub robot_buy_amount: u16,
@@ -222,7 +240,7 @@ impl GameLogic {
       self.offer_sell_option(id.to_string());
     }
     
-    while self.round_data.balance > 0 {
+    while self.round_data.balance > 0. {
       if !self.spend_money() {
         break;
       }
@@ -238,7 +256,7 @@ impl GameLogic {
   fn offer_movement_mining_attack_option(&mut self, robot_id: String) {
     if let Some(robot_info) = self.game_data.robots.get_mut(&robot_id) {
       if let Some(robot) = self.round_data.robots.get(&robot_id) {
-        let planet = self.game_data.planets.get(robot.planet_id.as_str());
+        let planet = self.game_data.planets.get(&robot.planet_id);
 
         match planet {
           Some(planet) => {
@@ -255,60 +273,60 @@ impl GameLogic {
             }
 
             let mut best_planet = Direction::Here;
-            let mut best_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0);
-            let mut best_planet_amount = planet.current_amount;
+            let mut best_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
+            let mut best_planet_amount = planet.last_known_amount;
 
             if robot.energy > 0 {
               let north_planet = self.game_data.planets.get(&planet.north);
               if let Some(north_planet) = north_planet {
-                let north_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0);
+                let north_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
                 if (north_price > best_price) {
                   best_price = north_price;
                   best_planet = Direction::North;
-                  best_planet_amount = north_planet.current_amount;
+                  best_planet_amount = north_planet.last_known_amount;
                 }
               }
 
               let east_planet= self.game_data.planets.get(&planet.east);
               if let Some(east_planet) = east_planet {
-                let east_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0);
+                let east_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
                 if (east_price > best_price) {
                   best_price = east_price;
                   best_planet = Direction::East;
-                  best_planet_amount = east_planet.current_amount;
+                  best_planet_amount = east_planet.last_known_amount;
                 }
               }
 
               let south_planet= self.game_data.planets.get(&planet.south);
               if let Some(south_planet) = south_planet {
-                let south_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0);
+                let south_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
                 if (south_price > best_price) {
                   best_price = south_price;
                   best_planet = Direction::South;
-                  best_planet_amount = south_planet.current_amount;
+                  best_planet_amount = south_planet.last_known_amount;
                 }
               }
 
               let west_planet= self.game_data.planets.get(&planet.west);
               if let Some(west_planet) = west_planet {
-                let west_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0);
+                let west_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
                 if (west_price > best_price) {
                   best_price = west_price;
                   best_planet = Direction::West;
-                 best_planet_amount = west_planet.current_amount;
+                 best_planet_amount = west_planet.last_known_amount;
                }
               }
 
-              if best_planet_amount as i64 * best_price > 0 {
+              if best_planet_amount as f32 * best_price > 0. {
                 if best_planet != Direction::Here {
-                  let weight = (best_price + (best_planet_amount as i64)) as f32;
+                  let weight = best_price + best_planet_amount as f32;
 
                   if robot_info.action.get_weight() < weight {
                     let movement_option = Arc::new(MovementAction::new(weight, best_planet));
                     robot_info.action = movement_option;
                   }
                 } else {
-                  let weight = ((planet.current_amount as i64) + best_price)  as f32;
+                  let weight = planet.last_known_amount as f32 + best_price;
 
                   if robot_info.action.get_weight() < weight {
                     let mining_option = Arc::new(MineAction::new(weight, planet.id.to_string()));
@@ -332,7 +350,7 @@ impl GameLogic {
   fn offer_sell_option(&mut self, robot_id: String) {
     if let Some(robot_info) = self.game_data.robots.get_mut(&robot_id) {
       if let Some(robot) = self.round_data.robots.get(robot_info.id.as_str()) {
-        let inventory_weight = 0.1 * (((robot_info.max_health - robot.health) as i64) * (robot_info.inventory.coal as i64) * self.round_data.resource_prices.get(&MineableResourceType::COAL).unwrap_or(&0) + (robot_info.inventory.gem as i64) * self.round_data.resource_prices.get(&MineableResourceType::GEM).unwrap_or(&0) + (robot_info.inventory.gold  as i64) * self.round_data.resource_prices.get(&MineableResourceType::GOLD).unwrap_or(&0)+ (robot_info.inventory.iron as i64) * self.round_data.resource_prices.get(&MineableResourceType::IRON).unwrap_or(&0) + (robot_info.inventory.platin as i64) * self.round_data.resource_prices.get(&MineableResourceType::PLATIN).unwrap_or(&0)) as f32;
+        let inventory_weight = 0.1 * ((robot_info.max_health - robot.health) as f32) * (robot_info.inventory.coal as f32) * self.round_data.resource_prices.get(&MineableResourceType::COAL).unwrap_or(&0.) + (robot_info.inventory.gem as f32) * self.round_data.resource_prices.get(&MineableResourceType::GEM).unwrap_or(&0.) + (robot_info.inventory.gold  as f32) * self.round_data.resource_prices.get(&MineableResourceType::GOLD).unwrap_or(&0.)+ (robot_info.inventory.iron as f32) * self.round_data.resource_prices.get(&MineableResourceType::IRON).unwrap_or(&0.) + (robot_info.inventory.platin as f32) * self.round_data.resource_prices.get(&MineableResourceType::PLATIN).unwrap_or(&0.);
 
         if inventory_weight > robot_info.action.get_weight() {
           let inventory_option = Arc::new(SellAction::new(inventory_weight as f32));
@@ -343,7 +361,7 @@ impl GameLogic {
   }
 
   fn spend_money(&mut self) -> bool {
-    let mut best_weight: i64 = 0;
+    let mut best_weight: f32 = 0.;
     let mut best_item = TradeItemType::Robot;
     let mut best_id: Option<String> = None;
     let mut is_upgrade = false;
@@ -358,17 +376,17 @@ impl GameLogic {
                 let weight = (robot_info.max_health - robot.health) * robot.health_level.get_value_for_level() + robot.damage_level.get_value_for_level() + robot.mining_speed_level.get_value_for_level();
                 let item = TradeItemType::HealthRestore;
               
-                if weight as i64 > best_weight {
-                  best_weight = weight as i64;
+                if weight as f32 > best_weight {
+                  best_weight = weight as f32;
                   best_item = item;
                   best_id = Some(id.clone());
                   is_upgrade = false;
                 }
               
-                if best_weight < 50 && *health_price > 10 + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0){
-                  if (1000 > best_weight) {
+                if best_weight < 50. && *health_price > 10. + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0.) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0.){
+                  if (1000. > best_weight) {
                     best_item = TradeItemType::Robot;
-                    best_weight = 1000;
+                    best_weight = 1000.;
                     is_upgrade = false;
                   }
                 } 
@@ -379,16 +397,16 @@ impl GameLogic {
                 let weight = (robot_info.max_energy - robot.energy) * robot.energy_level.get_value_for_level() * robot.damage_level.get_value_for_level() * robot.mining_speed_level.get_value_for_level();
                 let item = TradeItemType::EnergyRestore;
               
-                if weight as i64 > best_weight {
-                  best_weight = weight as i64;
+                if weight as f32 > best_weight {
+                  best_weight = weight as f32;
                   best_item = item;
                   best_id = Some(id.clone());
                   is_upgrade = false;
                 }
-                if best_weight < 50 && *energy_price > 10 + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0) {
-                  if (1000 > best_weight) {
+                if best_weight < 50. && *energy_price > 10. + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0.) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0.) {
+                  if (1000. > best_weight) {
                     best_item = TradeItemType::Robot;
-                    best_weight = 1000;
+                    best_weight = 1000.;
                     is_upgrade = false;
                   }
                 } 
@@ -403,8 +421,8 @@ impl GameLogic {
                   if let Some(item_price) = self.round_data.item_prices.get(&next_level_item) {
                     if self.round_data.balance >= *item_price {
                       if let Some(ressource_price) = self.round_data.resource_prices.get(&planet.resource) {
-                        let weight = (planet.current_amount as i64) * ressource_price + robot_info.inventory.used_storage as i64;                        
-                        if weight > best_weight {
+                        let weight = (planet.last_known_amount as f32) * ressource_price + robot_info.inventory.used_storage as f32;
+                        if weight > best_weight as f32 {
                           best_weight = weight;
                           best_item = next_level_item;
                           best_id = Some(id.clone());
@@ -423,16 +441,16 @@ impl GameLogic {
       }
     }
 
-    if (self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&100000000)) {
-      if 1000 >= best_weight {
+    if (self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&1000000.)) {
+      if 1000. >= best_weight {
         best_item = TradeItemType::Robot;
-        best_weight = 1000;
+        best_weight = 1000.;
       }
     }
 
-    if best_weight > 0 {
+    if best_weight > 0. {
       if best_item == TradeItemType::Robot {
-        self.round_data.balance -= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&10000000);
+        self.round_data.balance -= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&10000000.);
         self.game_data.robot_buy_amount += 1;
         return true;
       }
@@ -440,17 +458,17 @@ impl GameLogic {
       if let Some(id) = best_id {
         if let Some(best_robot) = self.game_data.robots.get_mut(&id) {
           if !is_upgrade {
-            if best_weight as f32 > best_robot.action.get_weight() {
+            if best_weight > best_robot.action.get_weight() {
               best_robot.action = Arc::new(PurchaseAction::new(best_weight as f32, best_item));
               best_robot.regen = true;
-              self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000);
+              self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000.);
               return true;
             }
           }
           else {
             best_robot.upgrade_action = Arc::new(PurchaseAction::new(best_weight as f32, best_item));
             best_robot.upgrade = true;
-            self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000);
+            self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000.);
             return true;
           }
         }
@@ -465,6 +483,10 @@ impl GameLogic {
   // TODO every round:
   // resource_mined, resource_removed, transaction_booked, planet_revealed
 
+  pub fn balance_update(&mut self, balance: f32) {
+    self.round_data.balance = balance;
+  }
+
   pub fn save_robot(&mut self, robot: Robot) {
     if robot.player_id == self.game_data.player_id {
       let new_robot_info = PermanetRobotInfo::new(robot.robot_info.id.clone(), robot.player_id, Arc::new(NoneAction::new()), false, Arc::new(NoneAction::new()), false, robot.max_health, robot.max_energy, robot.energy_regen, robot.attack_damage, robot.mining_speed, robot.inventory);
@@ -477,9 +499,8 @@ impl GameLogic {
     }
   }
 
-
   pub fn update_robots(&mut self, updated_robot: &mut MinimalRobot) {
-    if let Some(mut robot) = self.round_data.robots.get_mut(&updated_robot.id) {// coc i don't quite get this, i guess i'm supposed to not have the same date in round and game_data, am i?
+    if let Some(mut robot) = self.round_data.robots.get_mut(&updated_robot.id) {
       if let Some(robot_info) = self.game_data.robots.get_mut(&updated_robot.id) {
         if updated_robot.damage_level != robot.damage_level {
           robot_info.attack_damage = updated_robot.damage_level.get_attack_damage_value_for_level();
@@ -511,10 +532,49 @@ impl GameLogic {
     }
   }
 
-  // update inventory
+  pub fn update_inventory_add(&mut self, robot_id: String, mined_amount: u16, coal: u16, gem: u16, gold: u16, iron: u16, platin: u16) {
+    if let Some(robot) = self.game_data.robots.get_mut(&robot_id) {
+      robot.inventory.used_storage += mined_amount;
 
-  pub fn update_planet(&mut self, planet_id: String, mined_amount: u16, resource_type: MineableResourceType) {
-    if let Some(planet) = self.round_data.planets
+      if robot.inventory.max_storage <= robot.inventory.used_storage {
+        robot.inventory.full = true;
+        robot.inventory.used_storage = robot.inventory.max_storage;
+      }
+
+      robot.inventory.coal = coal;
+      robot.inventory.gem = gem;
+      robot.inventory.gold = gold;
+      robot.inventory.iron = iron;
+      robot.inventory.platin = platin;
+    }
+  }
+
+  pub fn update_inventory_remove(&mut self, robot_id: String, removed_amount: u16, coal: u16, gem: u16, gold: u16, iron: u16, platin: u16) {
+    if let Some(robot) = self.game_data.robots.get_mut(&robot_id) {
+      robot.inventory.used_storage -= removed_amount;
+      robot.inventory.full = false;
+
+      robot.inventory.coal = coal;
+      robot.inventory.gem = gem;
+      robot.inventory.gold = gold;
+      robot.inventory.iron = iron;
+      robot.inventory.platin = platin;
+    }
+  }
+
+  pub fn update_planet(&mut self, planet_id: String, mined_amount: u32) {
+    if let Some(planet) = self.round_data.planets.get_mut(&planet_id) {
+      planet.current_amount -= mined_amount;
+
+      if let Some(planet_info) = self.game_data.planets.get_mut(&planet_id) {
+        planet_info.last_known_amount = planet.current_amount;
+      }
+    }
+  }
+
+  pub fn save_planet(&mut self, planet: Planet, planet_info: PermanentPlanetInfo) {
+    self.round_data.planets.insert(planet.id.clone(), planet);
+    self.game_data.planets.insert(planet_info.id.clone(), planet_info);
   }
 }
 
@@ -742,6 +802,137 @@ impl ResourceMinedEventHandler {
 
 impl EventHandler<PlanetResourceMinedEvent> for ResourceMinedEventHandler {
   fn handle(&mut self, event: PlanetResourceMinedEvent) {
-    self.game.update_planet(event.planet_id, event.mined_amount, event.resource.resource_type);
+    self.game.update_planet(event.planet_id, event.mined_amount);
   }
-} 
+}
+
+pub struct PlanetDiscoveredEventHandler {
+  game: GameLogic,
+}
+
+impl PlanetDiscoveredEventHandler {
+  pub fn new(game: GameLogic) -> Self {
+    Self {
+      game,
+    }
+  }
+}
+
+impl EventHandler<PlanetDiscoveredEvent> for PlanetDiscoveredEventHandler {
+  fn handle(&mut self, event: PlanetDiscoveredEvent) {
+    let planet = Planet::new(event.planet_id.clone(), event.resource.current_amount);
+
+    let mut north_planet = String::new();
+    let mut east_planet = String::new();
+    let mut south_planet = String::new();
+    let mut west_planet = String::new();
+
+
+    for neighbour in event.neighbours {
+      match neighbour.compass_direction {
+        CompassDirection::NORTH => north_planet = neighbour.planet_id,
+        CompassDirection::EAST => east_planet = neighbour.planet_id,
+        CompassDirection::SOUTH => south_planet = neighbour.planet_id,
+        CompassDirection::WEST => west_planet = neighbour.planet_id,
+      }
+    }
+
+    let planet_info = PermanentPlanetInfo::new(event.planet_id.clone(), event.movement_difficulty, event.resource.resource_type, event.resource.max_amount, event.resource.current_amount, north_planet, east_planet, south_planet, west_planet);
+    
+    self.game.save_planet(planet, planet_info);
+  }
+}
+
+pub struct RobotResourceMinedEventHandler {
+  game: GameLogic,
+}
+
+impl RobotResourceMinedEventHandler {
+  pub fn new(game: GameLogic) -> Self {
+    Self {
+      game,
+    }
+  }
+}
+
+impl EventHandler<RobotResourceMinedEvent> for RobotResourceMinedEventHandler {
+  fn handle(&mut self, event: RobotResourceMinedEvent) {
+    self.game.update_inventory_add(event.robot_id, event.mined_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
+  }
+}
+
+pub struct RobotResourceRemovedEventHandler {
+  game: GameLogic,
+}
+
+impl RobotResourceRemovedEventHandler {
+  pub fn new(game: GameLogic) -> Self {
+    Self {
+      game,
+    }
+  }
+}
+
+impl EventHandler<RobotResourceRemovedEvent> for RobotResourceRemovedEventHandler {
+  fn handle(&mut self, event: RobotResourceRemovedEvent) {
+    self.game.update_inventory_add(event.robot_id, event.removed_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
+  }
+}
+
+pub struct BankAccountInitializedEventHandler {
+  game: GameLogic,
+}
+
+impl BankAccountInitializedEventHandler {
+  pub fn new(game: GameLogic) -> Self {
+    Self {
+      game,
+    }
+  }
+}
+
+impl EventHandler<BankAccountInitializedEvent> for BankAccountInitializedEventHandler {
+  fn handle(&mut self, event: BankAccountInitializedEvent) {
+    if event.player_id == self.game.game_data.player_id {
+      self.game.balance_update(event.balance);
+    }
+  }
+}
+
+pub struct BankAccountTransactionBookedEventHandler {
+  game: GameLogic,
+}
+
+impl BankAccountTransactionBookedEventHandler {
+  pub fn new(game: GameLogic) -> Self {
+    Self {
+      game,
+    }
+  }
+}
+
+impl EventHandler<BankAccountTransactionBookedEvent> for BankAccountTransactionBookedEventHandler {
+  fn handle(&mut self, event: BankAccountTransactionBookedEvent) {
+    if event.player_id == self.game.game_data.player_id {
+      self.game.balance_update(event.balance);
+    }
+  }
+}
+
+pub struct TradablePricesEventHandler {
+  game: GameLogic,
+}
+
+impl TradablePricesEventHandler {
+  pub fn new(game: GameLogic) -> Self {
+    Self {
+      game,
+    }
+  }
+}
+
+impl EventHandler<TradablePricesEvent> for TradablePricesEventHandler {
+  fn handle(&mut self, event: TradablePricesEvent) {
+    
+  }
+}
