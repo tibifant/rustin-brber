@@ -479,12 +479,27 @@ impl GameLogic {
 
   // Event Stuff
   // TODO: assign player_id
-  // TODO: handle bank_acoutn_created
-  // TODO every round:
-  // resource_mined, resource_removed, transaction_booked, planet_revealed
 
   pub fn balance_update(&mut self, balance: f32) {
     self.round_data.balance = balance;
+  }
+
+  pub fn update_item_price(&mut self, item: TradeItemType, price: f32) {
+    if let Some(p) = self.round_data.item_prices.get_mut(&item) {
+      *p = price;
+    }
+    else {
+      self.round_data.item_prices.insert(item, price);
+    }
+  }
+  
+  pub fn update_resource_price(&mut self, item: MineableResourceType, price: f32) {
+    if let Some(mut p) = self.round_data.resource_prices.get_mut(&item) {
+      *p = price;
+    }
+    else {
+      self.round_data.resource_prices.insert(item, price);
+    }
   }
 
   pub fn save_robot(&mut self, robot: Robot) {
@@ -932,7 +947,54 @@ impl TradablePricesEventHandler {
 }
 
 impl EventHandler<TradablePricesEvent> for TradablePricesEventHandler {
-  fn handle(&mut self, event: TradablePricesEvent) {
-    
+  fn handle(&mut self, event:TradablePricesEvent) {
+    for item in event.items {
+      match item.name.as_str() {
+        "MINING_SPEED_1" => self.game.update_item_price(TradeItemType::MiningSpeed1, item.price as f32),
+        "MINING_SPEED_2" => self.game.update_item_price(TradeItemType::MiningSpeed2, item.price as f32),
+        "MINING_SPEED_3" => self.game.update_item_price(TradeItemType::MiningSpeed3, item.price as f32),
+        "MINING_SPEED_4" => self.game.update_item_price(TradeItemType::MiningSpeed4, item.price as f32),
+        "MINING_SPEED_5" => self.game.update_item_price(TradeItemType::MiningSpeed5, item.price as f32),
+        "MAX_ENERGY_1" => self.game.update_item_price(TradeItemType::MaxEnergy1, item.price as f32),
+        "MAX_ENERGY_2" => self.game.update_item_price(TradeItemType::MaxEnergy2, item.price as f32),
+        "MAX_ENERGY_3" => self.game.update_item_price(TradeItemType::MaxEnergy3, item.price as f32),
+        "MAX_ENERGY_4" => self.game.update_item_price(TradeItemType::MaxEnergy4, item.price as f32),
+        "MAX_ENERGY_5" => self.game.update_item_price(TradeItemType::MaxEnergy5, item.price as f32),
+        "ENERGY_REGEN_1" => self.game.update_item_price(TradeItemType::EnergyRegen1, item.price as f32),
+        "ENERGY_REGEN_2" => self.game.update_item_price(TradeItemType::EnergyRegen2, item.price as f32),
+        "ENERGY_REGEN_3" => self.game.update_item_price(TradeItemType::EnergyRegen3, item.price as f32),
+        "ENERGY_REGEN_4" => self.game.update_item_price(TradeItemType::EnergyRegen4, item.price as f32),
+        "ENERGY_REGEN_5" => self.game.update_item_price(TradeItemType::EnergyRegen5, item.price as f32),
+        "STORAGE_1" => self.game.update_item_price(TradeItemType::Storage1, item.price as f32),
+        "STORAGE_2" => self.game.update_item_price(TradeItemType::Storage2, item.price as f32),
+        "STORAGE_3" => self.game.update_item_price(TradeItemType::Storage3, item.price as f32),
+        "STORAGE_4" => self.game.update_item_price(TradeItemType::Storage4, item.price as f32),
+        "STORAGE_5" => self.game.update_item_price(TradeItemType::Storage5, item.price as f32),
+        "MINING_1" => self.game.update_item_price(TradeItemType::Mining1, item.price as f32),
+        "MINING_2" => self.game.update_item_price(TradeItemType::Mining2, item.price as f32),
+        "MINING_3" => self.game.update_item_price(TradeItemType::Mining3, item.price as f32),
+        "MINING_4" => self.game.update_item_price(TradeItemType::Mining4, item.price as f32),
+        "MINING_5" => self.game.update_item_price(TradeItemType::Mining5, item.price as f32),
+        "HEALTH_1" => self.game.update_item_price(TradeItemType::Health1, item.price as f32),
+        "HEALTH_2" => self.game.update_item_price(TradeItemType::Health2, item.price as f32),
+        "HEALTH_3" => self.game.update_item_price(TradeItemType::Health3, item.price as f32),
+        "HEALTH_4" => self.game.update_item_price(TradeItemType::Health4, item.price as f32),
+        "HEALTH_5" => self.game.update_item_price(TradeItemType::Health5, item.price as f32),
+        "DAMAGE_1" => self.game.update_item_price(TradeItemType::Damage1, item.price as f32),
+        "DAMAGE_2" => self.game.update_item_price(TradeItemType::Damage2, item.price as f32),
+        "DAMAGE_3" => self.game.update_item_price(TradeItemType::Damage3, item.price as f32),
+        "DAMAGE_4" => self.game.update_item_price(TradeItemType::Damage4, item.price as f32),
+        "DAMAGE_5" => self.game.update_item_price(TradeItemType::Damage5, item.price as f32),
+        "ENERGY_RESTORE" => self.game.update_item_price(TradeItemType::EnergyRestore, item.price as f32),
+        "HEALTH_RESTORE" => self.game.update_item_price(TradeItemType::HealthRestore, item.price as f32),
+        "ROBOT" => self.game.update_item_price(TradeItemType::Robot, item.price as f32),
+        "COAL" => self.game.update_resource_price(MineableResourceType::COAL, item.price as f32),
+        "IRON" => self.game.update_resource_price(MineableResourceType::IRON, item.price as f32),
+        "GEM" => self.game.update_resource_price(MineableResourceType::GEM, item.price as f32),
+        "GOLD" => self.game.update_resource_price(MineableResourceType::GOLD, item.price as f32),
+        "PLATIN" => self.game.update_resource_price(MineableResourceType::PLATIN, item.price as f32),
+        _ => {},
+      }
+    }
   }
 }
