@@ -3,6 +3,9 @@ use std::{collections::HashMap, hash::Hash};
 
 use std::sync::Arc;
 
+use tracing::info;
+
+use crate::domainprimitives::command::command::Command;
 use crate::domainprimitives::location::compass_direction_dto::CompassDirection;
 use crate::eventinfrastructure::event_handler::EventHandler;
 use crate::eventinfrastructure::map::planet_discovered_event::PlanetDiscoveredEvent;
@@ -594,7 +597,9 @@ impl GameLogic {
 }
 
 pub fn execute_purchase_robots_command(game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, amount: u16) {
-  println!(" ");
+  let buy_robot_command = Command::create_robot_purchase_command(player_id, amount);
+  info!("====> Try to buy Robots!!!!!!!!!!!!!!.");
+  let _ = game_service_rest_adapter.send_command(buy_robot_command);
 }
 
 pub trait Action {
@@ -647,7 +652,9 @@ impl Action for AttackAction {
   }
 
   fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
-      
+      let command = Command::create_robot_attack_command(player_id, robot_id, self.target_robot.clone());
+      info!("====> Trying to Attack!!!!!!!!!!!");
+      game_service_rest_adapter.send_command(command);
   }
 }
 
@@ -669,7 +676,9 @@ impl Action for SellAction {
   }
 
   fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
-      
+    let command = Command::create_robot_sell_inventory_command(player_id, robot_id);
+    info!("====> Trying to Sell Inventory!!!!!!!!!!!");
+    game_service_rest_adapter.send_command(command);
   }
 }
 
@@ -693,7 +702,9 @@ impl Action for MineAction {
   }
 
   fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
-      
+    let command = Command::create_robot_mine_command(player_id, robot_id, self.target_planet_id.clone());
+    info!("====> Trying to Attack!!!!!!!!!!!");
+    game_service_rest_adapter.send_command(command);
   }
 }
 
