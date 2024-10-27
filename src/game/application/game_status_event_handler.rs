@@ -33,7 +33,7 @@ impl GameStatusEventHandler {
 
 #[async_trait]
 impl EventHandler<GameStatusEvent> for GameStatusEventHandler {
-    async fn handle(&mut self, event: GameStatusEvent) {
+    async fn handle(&self, event: GameStatusEvent) {
         match event.status {
             GameStatus::CREATED => {
                 info!("Game {} Status: Created", event.game_id);

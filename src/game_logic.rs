@@ -1052,7 +1052,7 @@ impl RobotsRevealedEventHandler {
 
 #[async_trait]
 impl EventHandler<RobotsRevealedEvent> for RobotsRevealedEventHandler {
-  async fn handle(&mut self, event: RobotsRevealedEvent) {
+  async fn handle(&self, event: RobotsRevealedEvent) {
     let mut game_mut = self.game.lock().unwrap();
     for r in event.robots.iter() {
       let mut robot = MinimalRobot::new(r.robot_id.to_string(), r.planet_id.to_string(), r.energy, r.health, r.levels.health_level, r.levels.damage_level, r.levels.mining_speed_level, r.levels.mining_level, r.levels.energy_level, r.levels.energy_regen_level, r.levels.storage_level);
@@ -1085,7 +1085,7 @@ impl RobotSpawnedEventHandler {
 
 #[async_trait]
 impl EventHandler<RobotSpawnedEvent> for RobotSpawnedEventHandler {
-  async fn handle(&mut self, event: RobotSpawnedEvent) {
+  async fn handle(&self, event: RobotSpawnedEvent) {
       let r = event.robot;
       let robot_info = MinimalRobot::new(r.robot_id.to_string(), r.planet.planet_id.to_string(), r.robot_attributes.energy, r.robot_attributes.health, r.robot_levels.health_level, r.robot_levels.damage_level, r.robot_levels.mining_speed_level, r.robot_levels.mining_level, r.robot_levels.energy_level, r.robot_levels.energy_regen_level, r.inventory.storage_level);
 
@@ -1111,7 +1111,7 @@ impl ResourceMinedEventHandler {
 }
 #[async_trait]
 impl EventHandler<PlanetResourceMinedEvent> for ResourceMinedEventHandler {
-  async fn handle(&mut self, event: PlanetResourceMinedEvent) {
+  async fn handle(&self, event: PlanetResourceMinedEvent) {
     self.game.lock().unwrap().update_planet(event.planet_id, event.mined_amount);
   }
 }
@@ -1130,7 +1130,7 @@ impl PlanetDiscoveredEventHandler {
 
 #[async_trait]
 impl EventHandler<PlanetDiscoveredEvent> for PlanetDiscoveredEventHandler {
-  async fn handle(&mut self, event: PlanetDiscoveredEvent) {
+  async fn handle(&self, event: PlanetDiscoveredEvent) {
     let planet = Planet::new(event.planet_id.clone(), event.resource.current_amount);
 
     let mut north_planet = String::new();
@@ -1168,7 +1168,7 @@ impl RobotResourceMinedEventHandler {
 
 #[async_trait]
 impl EventHandler<RobotResourceMinedEvent> for RobotResourceMinedEventHandler {
-  async fn handle(&mut self, event: RobotResourceMinedEvent) {
+  async fn handle(&self, event: RobotResourceMinedEvent) {
     self.game.lock().unwrap().update_inventory_add(event.robot_id, event.mined_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
   }
 }
@@ -1187,8 +1187,8 @@ impl RobotResourceRemovedEventHandler {
 
 #[async_trait]
 impl EventHandler<RobotResourceRemovedEvent> for RobotResourceRemovedEventHandler {
-  async fn handle(&mut self, event: RobotResourceRemovedEvent) {
-    self.game.lock().unwrap().update_inventory_add(event.robot_id, event.removed_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
+  async fn handle(&self, event: RobotResourceRemovedEvent) {
+    self.game.lock().unwrap().update_inventory_remove(event.robot_id, event.removed_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
   }
 }
 
@@ -1206,7 +1206,7 @@ impl BankAccountInitializedEventHandler {
 
 #[async_trait]
 impl EventHandler<BankAccountInitializedEvent> for BankAccountInitializedEventHandler {
-  async fn handle(&mut self, event: BankAccountInitializedEvent) {
+  async fn handle(&self, event: BankAccountInitializedEvent) {
     let mut game_mut = self.game.lock().unwrap();
     if event.player_id == game_mut.game_data.player_id {
       game_mut.balance_update(event.balance);
@@ -1228,7 +1228,7 @@ impl BankAccountTransactionBookedEventHandler {
 
 #[async_trait]
 impl EventHandler<BankAccountTransactionBookedEvent> for BankAccountTransactionBookedEventHandler {
-  async fn handle(&mut self, event: BankAccountTransactionBookedEvent) {
+  async fn handle(&self, event: BankAccountTransactionBookedEvent) {
     let mut game_mut = self.game.lock().unwrap();
     if event.player_id == game_mut.game_data.player_id {
       game_mut.balance_update(event.balance);
@@ -1250,7 +1250,7 @@ impl TradablePricesEventHandler {
 
 #[async_trait]
 impl EventHandler<TradablePricesEvent> for TradablePricesEventHandler {
-  async fn handle(&mut self, event: TradablePricesEvent) {
+  async fn handle(&self, event: TradablePricesEvent) {
     let mut game_mut = self.game.lock().unwrap();
     for item in event.items {
       match item.name.as_str() {

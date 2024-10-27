@@ -65,38 +65,38 @@ impl EventDispatcher {
         match event.event_body {
             GameEventBodyType::GameStatus(game_status_event) => {
                 self.game_status_event_handler
-                    .handle(game_status_event);
+                    .handle(game_status_event).await;
             }
             GameEventBodyType::RoundStatus(round_status_event) => {
                 self.round_status_event_handler
-                    .handle(round_status_event);
+                    .handle(round_status_event).await;
             }
             GameEventBodyType::RobotSpawned(robot_spawned_event) => {
-                self.robot_spawned_event_handler.handle(robot_spawned_event);
+                self.robot_spawned_event_handler.handle(robot_spawned_event).await;
             }
             GameEventBodyType::RobotsRevealed(robots_revealed_event) => {
-                self.robots_revealed_event_handler.handle(robots_revealed_event);
+                self.robots_revealed_event_handler.handle(robots_revealed_event).await;
             }
             GameEventBodyType::PlanetResourceMined(planet_resource_mined_event) => {
-                self.resource_mined_event_handler.handle(planet_resource_mined_event);
+                self.resource_mined_event_handler.handle(planet_resource_mined_event).await;
             }
             GameEventBodyType::PlanetDiscovered(planet_discovered_event) => {
-                self.planet_discovered_handler.handle(planet_discovered_event);
+                self.planet_discovered_handler.handle(planet_discovered_event).await;
             }
             GameEventBodyType::RobotResourceMined(robot_resource_mined_event) => {
-                self.robot_resource_mined_handler.handle(robot_resource_mined_event);
+                self.robot_resource_mined_handler.handle(robot_resource_mined_event).await;
             }
             GameEventBodyType::RobotResourceRemoved(robot_resource_removed_event) => {
-                self.robot_resource_removed_handler.handle(robot_resource_removed_event);
+                self.robot_resource_removed_handler.handle(robot_resource_removed_event).await;
             }
             GameEventBodyType::BankAccountInitialized(bank_account_initialized_event) => {
-                self.bank_account_init_handler.handle(bank_account_initialized_event);
+                self.bank_account_init_handler.handle(bank_account_initialized_event).await;
             }
             GameEventBodyType::BankAccountTransactionBooked(bank_account_transaction_booked) => {
-                self.bank_account_transaction_booked_handler.handle(bank_account_transaction_booked);
+                self.bank_account_transaction_booked_handler.handle(bank_account_transaction_booked).await;
             }
             GameEventBodyType::TradablePrices(tradable_prices_event) => {
-                self.trdable_prices_event_handler.handle(tradable_prices_event);
+                self.trdable_prices_event_handler.handle(tradable_prices_event).await;
             }
 
             // if needed: Call Event Handler for Remaining Event Type
