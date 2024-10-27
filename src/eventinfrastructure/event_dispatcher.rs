@@ -4,7 +4,7 @@ use tokio::sync::Mutex;
 
 use crate::game::application::game_logic_service::GameLogicService;
 use crate::planet::application::planet_event_handler::{PlanetDiscoveredEventHandler, ResourceMinedEventHandler};
-use crate::robot::application::robot_event_handler::{RobotMovedEventHandler, RobotResourceMinedEventHandler, RobotResourceRemovedEventHandler, RobotsRevealedEventHandler};
+use crate::robot::application::robot_event_handler::{RobotMovedEventHandler, RobotResourceMinedEventHandler, RobotResourceRemovedEventHandler, RobotUpgradedEventHandler, RobotsRevealedEventHandler};
 use crate::transaction::application::transaction_event_handler::{BankAccountInitializedEventHandler, BankAccountTransactionBookedEventHandler, TradablePricesEventHandler};
 use crate::{eventinfrastructure::event_handler::EventHandler, robot::application::robot_event_handler::RobotSpawnedEventHandler};
 use crate::eventinfrastructure::game_event::GameEvent;
@@ -15,6 +15,7 @@ use crate::game::application::round_status_event_handler::RoundStatusEventHandle
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
+use super::robot::robot_upgraded_event;
 use super::trading::{bank_account_initialized_event, bank_account_transaction_booked, tradable_prices_event};
 
 pub struct EventDispatcher {
@@ -27,6 +28,7 @@ pub struct EventDispatcher {
     robot_resource_mined_handler: RobotResourceMinedEventHandler,
     robot_resource_removed_handler: RobotResourceRemovedEventHandler,
     robot_moved_event_handler: RobotMovedEventHandler,
+    robot_upgraded_event_handler: RobotUpgradedEventHandler,
     bank_account_init_handler: BankAccountInitializedEventHandler,
     bank_account_transaction_booked_handler: BankAccountTransactionBookedEventHandler,
     tradable_prices_event_handler: TradablePricesEventHandler,
@@ -60,6 +62,7 @@ impl EventDispatcher {
             robot_resource_mined_handler: RobotResourceMinedEventHandler::new(game_logic.clone()),
             robot_resource_removed_handler: RobotResourceRemovedEventHandler::new(game_logic.clone()),
             robot_moved_event_handler: RobotMovedEventHandler::new(game_logic.clone()),
+            robot_upgraded_event_handler: RobotUpgradedEventHandler::new(game_logic.clone()),
             bank_account_init_handler: BankAccountInitializedEventHandler::new(game_logic.clone()),
             bank_account_transaction_booked_handler: BankAccountTransactionBookedEventHandler::new(game_logic.clone()),
             tradable_prices_event_handler: TradablePricesEventHandler::new(game_logic.clone()),            
@@ -96,6 +99,9 @@ impl EventDispatcher {
             }
             GameEventBodyType::RobotMoved(robot_moved_event) => {
                 self.robot_moved_event_handler.handle(robot_moved_event).await;
+            }
+            GameEventBodyType::RobotUpgraded(robot_upgraded_event) => {
+                self.robot_upgraded_event_handler.handle(robot_upgraded_event).await;
             }
             GameEventBodyType::BankAccountInitialized(bank_account_initialized_event) => {
                 self.bank_account_init_handler.handle(bank_account_initialized_event).await;

@@ -6,6 +6,7 @@ use crate::domainprimitives::location::mineable_resource_type::MineableResourceT
 use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 use crate::domainprimitives::purchasing::robot_upgrade_type::RobotUpgradeType;
 use crate::domainprimitives::purchasing::trade_item_type::TradeItemType;
+use crate::eventinfrastructure::robot;
 use crate::game::domain::game_logic_info::{GameDecisionInfo, PersistentData, TransientData};
 use crate::planet::domain::planet::{PersistentPlanetInfo, TransientPlanetInfo};
 use crate::rest::game_service_rest_adapter_trait::{self, GameServiceRestAdapterTrait};
@@ -120,7 +121,7 @@ impl GameLogicService {
                 } else if !robot_info.inventory.full {
                   let weight = resource.current_amount /* LAST KNOWN, not *ACTUALLY* CURRENT */ as f32 + best_price;
                 
-                  if robot_decision.action.get_weight() < weight {
+                  if robot_decision.action.get_weight() < weight && (robot.mining_level as u8) >= planet.movement_difficulty{
                     let mining_option: Box<dyn Action + Send + Sync> = Box::new(MineAction::new(weight, planet.id.to_string()));
                     robot_decision.action = mining_option;
                   }
@@ -303,7 +304,6 @@ impl GameLogicService {
       
       self.game_data.robots.insert(new_robot_info.id.clone(), new_robot_info);      
       self.round_data.robots.insert(robot.robot_info.id.clone(), robot.robot_info);
-      self.game_data.robot_count += 1;
     }
     else {
       self.round_data.enemy_robots.insert(robot.robot_info.id.clone(), robot.robot_info);
@@ -314,7 +314,6 @@ impl GameLogicService {
     if updated_robot.health == 0 {
       self.round_data.robots.remove(&updated_robot.id);
       self.game_data.robots.remove(&updated_robot.id);
-      self.game_data.robot_count -= 1;
       return;
     }
 
@@ -394,6 +393,15 @@ impl GameLogicService {
       if let Some(r) = self.round_data.robots.get_mut(&robot_id) {
         r.planet_id = new_planet;
         r.energy = remaining_energy;
+      }
+    }
+  }
+  pub fn update_robot_level(&mut self, robot_id: String, level: RobotLevel, upgrade: RobotUpgradeType) {
+    if let Some(r) = self.round_data.robots.get_mut(&robot_id) {
+      match upgrade {
+        RobotUpgradeType::Mining => r.mining_level = level,
+        _ => (),
+        // TODO add other upgrade types here, if used!
       }
     }
   }

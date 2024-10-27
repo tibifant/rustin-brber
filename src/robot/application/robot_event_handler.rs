@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex;
 
-use crate::{eventinfrastructure::{event_handler::EventHandler, robot::{robot_moved_event::RobotMovedEvent, robot_resource_mined_event::RobotResourceMinedEvent, robot_resource_removed_event::RobotResourceRemovedEvent, robot_spawned_event::RobotSpawnedEvent, robots_revealed_event::RobotsRevealedEvent}}, game::application::game_logic_service::GameLogicService, robot::domain::robot::{Inventory, Robot, TransientRobotInfo}};
+use crate::{eventinfrastructure::{event_handler::EventHandler, robot::{robot_moved_event::RobotMovedEvent, robot_resource_mined_event::RobotResourceMinedEvent, robot_resource_removed_event::RobotResourceRemovedEvent, robot_spawned_event::RobotSpawnedEvent, robot_upgraded_event::RobotUpgradedEvent, robots_revealed_event::RobotsRevealedEvent}}, game::application::game_logic_service::GameLogicService, robot::domain::robot::{Inventory, Robot, TransientRobotInfo}};
 
 pub struct RobotsRevealedEventHandler {
   game: Arc<Mutex<GameLogicService>>, // this needs to be a pointer doesn't it?
@@ -119,5 +119,24 @@ impl RobotMovedEventHandler {
 impl EventHandler<RobotMovedEvent> for RobotMovedEventHandler {
   async fn handle(&self, event: RobotMovedEvent) {
     self.game.lock().await.update_robot_location(event.robot_id, event.to_planet.planet_id, event.remaining_energy);
+  }
+}
+
+pub struct RobotUpgradedEventHandler {
+  game: Arc<Mutex<GameLogicService>>,
+}
+
+impl RobotUpgradedEventHandler {
+  pub fn new(game: Arc<Mutex<GameLogicService>>) -> Self {
+    Self {
+      game,
+    }
+  }
+}
+
+#[async_trait]
+impl EventHandler<RobotUpgradedEvent> for RobotUpgradedEventHandler {
+  async fn handle(&self, event: RobotUpgradedEvent) {
+    self.game.lock().await.update_robot_level(event.robot_id, event.level, event.upgrade);
   }
 }

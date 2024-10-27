@@ -49,9 +49,6 @@ pub struct PersistentData {
   pub robots: HashMap<String, PersistentRobotInfo>,
   pub player_id: String,
   pub robot_buy_amount: u16,
-  pub robot_count: u16,
-  pub current_level: u16,
-  pub next_round_buy: bool,
 }
 
 impl PersistentData {
@@ -60,17 +57,11 @@ impl PersistentData {
     let robots = HashMap::new();
     let player_id = String::new();
     let robot_buy_amount = 0;
-    let robot_count = 0;
-    let current_level = 0;
-    let next_round_buy = false;
     Self {
       planets,
       robots,
       player_id,
       robot_buy_amount,
-      robot_count,
-      current_level,
-      next_round_buy,
     }
   }
 }
