@@ -49,7 +49,7 @@ pub enum GameEventBodyType {
 
     //Map
     PlanetDiscovered(PlanetDiscoveredEvent),
-    PlanetResourceMined(PlanetResourceMinedEvent),
+    ResourceMined(PlanetResourceMinedEvent),
     #[serde(alias = "error")]
     ErrorEvent(GameErrorEvent),
 }

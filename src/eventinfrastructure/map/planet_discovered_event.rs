@@ -6,8 +6,8 @@ use crate::eventinfrastructure::map::dto::planet_neighbour_dto::PlanetNeighbourD
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanetDiscoveredEvent {
-    pub planet_id: String,
+    pub planet: String,
     pub movement_difficulty: u8,
     pub neighbours: Vec<PlanetNeighbourDto>,
-    pub resource: MineableResource,
+    pub resource: Option<MineableResource>,
 }

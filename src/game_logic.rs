@@ -13,6 +13,7 @@ use async_trait::async_trait;
 use crate::domainprimitives::command;
 use crate::domainprimitives::command::command::Command;
 use crate::domainprimitives::location::compass_direction_dto::CompassDirection;
+use crate::domainprimitives::location::mineable_resource::MineableResource;
 use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 use crate::domainprimitives::purchasing::robot_upgrade::RobotUpgrade;
 use crate::eventinfrastructure::event_handler::EventHandler;
@@ -130,14 +131,14 @@ impl TradeItemType {
 
 pub struct Planet {
   pub id: String,
-  pub current_amount: u32,
+  pub resource: Option<MineableResource>,
 }
 
 impl Planet {
-  pub fn new(id: String, current_amount: u32) -> Self {
+  pub fn new(id: String, resource: Option<MineableResource>) -> Self {
     Self {
       id,
-      current_amount,
+      resource,
     }
   }
 }
@@ -146,9 +147,7 @@ impl Planet {
 pub struct PermanentPlanetInfo {
   pub id: String,
   pub movement_difficulty: u8,
-  pub resource: MineableResourceType,
-  pub max_amount: u32,
-  pub last_known_amount: u32,
+  pub resource: Option<MineableResource>,
   pub north: String,
   pub east: String,
   pub west: String,
@@ -156,13 +155,11 @@ pub struct PermanentPlanetInfo {
 }
 
 impl PermanentPlanetInfo {
-  pub fn new(id: String, movement_difficulty: u8, resource: MineableResourceType, max_amount: u32, last_known_amount: u32, north: String, east: String, west: String, south: String) -> Self {
+  pub fn new(id: String, movement_difficulty: u8, resource: Option<MineableResource>, north: String, east: String, west: String, south: String) -> Self {
     Self {
       id,
       movement_difficulty,
       resource,
-      max_amount,
-      last_known_amount,
       north,
       east,
       west,
@@ -349,6 +346,7 @@ impl GameLogic {
           
           match planet {
             Some(planet) => {
+              if let Some(resource) = planet.resource {
               for (e_id, e) in &self.round_data.enemy_robots {
                 if e.planet_id == robot.planet_id {
                   let weight: f32 = (robot_info.attack_damage - e.damage_level.get_attack_damage_value_for_level()) as f32;
@@ -362,48 +360,24 @@ impl GameLogic {
               }
             
               let mut best_planet = Direction::Here;
-              let mut best_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
-              let mut best_planet_amount = planet.last_known_amount;
+              let mut best_price = *self.round_data.resource_prices.get(&resource.resource_type).unwrap_or(&0.);
+              let mut best_planet_amount = resource.current_amount;
             
               if robot.energy > 0 {
-                let north_planet = self.game_data.planets.get(&planet.north);
-                if let Some(north_planet) = north_planet {
-                  let north_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
-                  if (north_price > best_price) {
-                    best_price = north_price;
-                    best_planet = Direction::North;
-                    best_planet_amount = north_planet.last_known_amount;
-                  }
+                if let Some(p) = self.game_data.planets.get(&planet.north) {
+                  self.evaluate_planet(Direction::North, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
                 }
               
-                let east_planet= self.game_data.planets.get(&planet.east);
-                if let Some(east_planet) = east_planet {
-                  let east_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
-                  if (east_price > best_price) {
-                    best_price = east_price;
-                    best_planet = Direction::East;
-                    best_planet_amount = east_planet.last_known_amount;
-                  }
+                if let Some(p) = self.game_data.planets.get(&planet.south) {
+                  self.evaluate_planet(Direction::South, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
                 }
               
-                let south_planet= self.game_data.planets.get(&planet.south);
-                if let Some(south_planet) = south_planet {
-                  let south_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
-                  if (south_price > best_price) {
-                    best_price = south_price;
-                    best_planet = Direction::South;
-                    best_planet_amount = south_planet.last_known_amount;
-                  }
+                if let Some(p) = self.game_data.planets.get(&planet.west) {
+                  self.evaluate_planet(Direction::West, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
                 }
               
-                let west_planet= self.game_data.planets.get(&planet.west);
-                if let Some(west_planet) = west_planet {
-                  let west_price = self.round_data.resource_prices.get(&planet.resource).unwrap_or(&0.);
-                  if (west_price > best_price) {
-                    best_price = west_price;
-                    best_planet = Direction::West;
-                   best_planet_amount = west_planet.last_known_amount;
-                 }
+                if let Some(p) = self.game_data.planets.get(&planet.east) {
+                  self.evaluate_planet(Direction::East, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
                 }
               
                 if best_planet_amount as f32 * best_price > 0. {
@@ -415,7 +389,7 @@ impl GameLogic {
                       robot_decision.action = movement_option;
                     }
                   } else {
-                    let weight = planet.last_known_amount as f32 + best_price;
+                    let weight = resource.current_amount /* LAST KNOWN, not *ACTUALLY* CURRENT */ as f32 + best_price;
                   
                     if robot_decision.action.get_weight() < weight {
                       let mining_option: Box<dyn Action + Send + Sync> = Box::new(MineAction::new(weight, planet.id.to_string()));
@@ -431,6 +405,7 @@ impl GameLogic {
                 }
               }
             }
+            }
             None => {}
           }
         }
@@ -438,6 +413,17 @@ impl GameLogic {
           let a: Box<dyn Action + Send + Sync> = Box::new(RegenerateAction::new(9999999.));
           robot_decision.action = a;
         }
+      }
+    }
+  }
+
+  fn evaluate_planet(&self, dir: Direction, planet: &PermanentPlanetInfo, best_planet: &mut Direction, best_price: &mut f32, best_amount: &mut u32) {
+    if let Some(resource) = planet.resource {
+      let price = self.round_data.resource_prices.get(&resource.resource_type).unwrap_or(&0.);
+      if (price > best_price) {
+        *best_price = *price;
+        *best_planet = dir;
+        *best_amount = resource.current_amount; // LAST KNOWN, not *ACTUALLY* CURRENT
       }
     }
   }
@@ -514,13 +500,15 @@ impl GameLogic {
                   if let Some(next_level_item) = TradeItemType::get_next_level_item(RobotUpgradeType::Storage, robot.storage_level.get_value_for_level()) {
                     if let Some(item_price) = self.round_data.item_prices.get(&next_level_item) {
                       if self.round_data.balance >= *item_price {
-                        if let Some(ressource_price) = self.round_data.resource_prices.get(&planet.resource) {
-                          let weight = (planet.last_known_amount as f32) * ressource_price + robot_info.inventory.used_storage as f32;
-                          if weight > best_weight as f32 {
-                            best_weight = weight;
-                            best_item = next_level_item;
-                            best_id = Some(id.clone());
-                            is_upgrade = true;
+                        if let Some(resource) = planet.resource {
+                          if let Some(resource_price) = self.round_data.resource_prices.get(&resource.resource_type) {
+                            let weight = (resource.current_amount as f32) * resource_price + robot_info.inventory.  used_storage as f32;
+                            if weight > best_weight as f32 {
+                              best_weight = weight;
+                              best_item = next_level_item;
+                              best_id = Some(id.clone());
+                              is_upgrade = true;
+                            }
                           }
                         }
                       }
@@ -683,10 +671,14 @@ impl GameLogic {
 
   pub fn update_planet(&mut self, planet_id: String, mined_amount: u32) {
     if let Some(planet) = self.round_data.planets.get_mut(&planet_id) {
-      planet.current_amount -= mined_amount;
-
-      if let Some(planet_info) = self.game_data.planets.get_mut(&planet_id) {
-        planet_info.last_known_amount = planet.current_amount;
+      if let Some(mut r) = planet.resource {
+        r.current_amount -= mined_amount;
+      
+        if let Some(planet_info) = self.game_data.planets.get_mut(&planet_id) {
+          if let Some(mut resource) = planet_info.resource {
+            resource.current_amount = r.current_amount;
+          }
+        }
       }
     }
   }
@@ -778,8 +770,9 @@ impl Action for AttackAction {
   }
 
   async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
-      let command = Command::create_robot_attack_command(player_id, robot_id, self.target_robot.clone());
+      let command = Command::create_robot_attack_command(player_id, robot_id.clone(), self.target_robot.clone());
       info!("====> Trying to Attack!!!!!!!!!!!");
+      info!("robot ({}) attacks robot ({})", robot_id.clone(), self.target_robot);
       game_service_rest_adapter.send_command(command).await;
   }
 }
@@ -803,8 +796,9 @@ impl Action for RegenerateAction {
   }
 
   async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
-      let command = Command::create_robot_regenerate_command(player_id, robot_id);
+      let command = Command::create_robot_regenerate_command(player_id, robot_id.clone());
       info!("====> Trying to Regenerate!!!!!!!!!!!");
+      info!("robot ({}) regenerates", robot_id.clone());
       game_service_rest_adapter.send_command(command).await;
   }
 }
@@ -828,8 +822,9 @@ impl Action for SellAction {
   }
 
   async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
-    let command = Command::create_robot_sell_inventory_command(player_id, robot_id);
+    let command = Command::create_robot_sell_inventory_command(player_id, robot_id.clone());
     info!("====> Trying to Sell Inventory!!!!!!!!!!!");
+    info!("robot ({}) sells inventory", robot_id.clone());
     game_service_rest_adapter.send_command(command).await;
   }
 }
@@ -855,8 +850,9 @@ impl Action for MineAction {
   }
 
   async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
-    let command = Command::create_robot_mine_command(player_id, robot_id, self.target_planet_id.clone());
-    info!("====> Trying to Attack!!!!!!!!!!!");
+    let command = Command::create_robot_mine_command(player_id, robot_id.clone(), self.target_planet_id.clone());
+    info!("====> Trying to Mine!!!!!!!!!!!");
+    info!("robot ({}) mines resource on planet ({})", robot_id.clone(), self.target_planet_id.clone());
     game_service_rest_adapter.send_command(command).await;
   }
 }
@@ -1034,6 +1030,8 @@ impl Action for PurchaseAction {
       _ => {},
     }
     
+    info!("====> Trying to Purchase Item!!!!!!!!!!!");
+    
     match command {
       Some(command) => { game_service_rest_adapter.send_command(command).await; },
       None => {},
@@ -1141,7 +1139,7 @@ impl ResourceMinedEventHandler {
 #[async_trait]
 impl EventHandler<PlanetResourceMinedEvent> for ResourceMinedEventHandler {
   async fn handle(&self, event: PlanetResourceMinedEvent) {
-    self.game.lock().await.update_planet(event.planet_id, event.mined_amount);
+    self.game.lock().await.update_planet(event.planet, event.mined_amount);
   }
 }
 
@@ -1160,26 +1158,27 @@ impl PlanetDiscoveredEventHandler {
 #[async_trait]
 impl EventHandler<PlanetDiscoveredEvent> for PlanetDiscoveredEventHandler {
   async fn handle(&self, event: PlanetDiscoveredEvent) {
-    let planet = Planet::new(event.planet_id.clone(), event.resource.current_amount);
-
-    let mut north_planet = String::new();
-    let mut east_planet = String::new();
-    let mut south_planet = String::new();
-    let mut west_planet = String::new();
-
-
-    for neighbour in event.neighbours {
-      match neighbour.compass_direction {
-        CompassDirection::NORTH => north_planet = neighbour.planet_id,
-        CompassDirection::EAST => east_planet = neighbour.planet_id,
-        CompassDirection::SOUTH => south_planet = neighbour.planet_id,
-        CompassDirection::WEST => west_planet = neighbour.planet_id,
-      }
-    }
-
-    let planet_info = PermanentPlanetInfo::new(event.planet_id.clone(), event.movement_difficulty, event.resource.resource_type, event.resource.max_amount, event.resource.current_amount, north_planet, east_planet, south_planet, west_planet);
     
-    self.game.lock().await.save_planet(planet, planet_info);
+      let planet = Planet::new(event.planet.clone(), event.resource);
+
+      let mut north_planet = String::new();
+      let mut east_planet = String::new();
+      let mut south_planet = String::new();
+      let mut west_planet = String::new();
+
+
+      for neighbour in event.neighbours {
+        match neighbour.compass_direction {
+          CompassDirection::NORTH => north_planet = neighbour.planet_id,
+          CompassDirection::EAST => east_planet = neighbour.planet_id,
+          CompassDirection::SOUTH => south_planet = neighbour.planet_id,
+          CompassDirection::WEST => west_planet = neighbour.planet_id,
+        }
+      }
+
+      let planet_info = PermanentPlanetInfo::new(event.planet.clone(), event.movement_difficulty, event.resource, north_planet, east_planet, south_planet, west_planet);
+
+      self.game.lock().await.save_planet(planet, planet_info);
   }
 }
 

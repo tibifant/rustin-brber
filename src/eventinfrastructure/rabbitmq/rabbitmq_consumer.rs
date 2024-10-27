@@ -30,32 +30,33 @@ impl RabbitMQConsumer {
             ParseError::MissingField("Headers were non-existent in properties!".to_string())
         })?;
 
-        let fetch_field = |field: &str| {
-            let field_name = ShortStr::try_from(field).map_err(|_| {
-                ParseError::InvalidType(format!(
-                    "Fieldname '{}' was not able to be parsed into a ShortStr",
-                    field
-                ))
-            })?;
-            headers
-                .get(&field_name)
-                .ok_or_else(|| {
-                    ParseError::MissingField(format!(
-                        "Header with key {} was not found in the FieldTable!",
-                        field.to_string()
-                    ))
-                })
-                .and_then(|field_value| self.extract_string_from_byte_array(field_value))
+        let fetch_field = |field: &str| -> Option<String> {
+            let field_name = ShortStr::try_from(field).ok();
+            match field_name {
+                Some(name) => {
+                    headers
+                        .get(&name)
+                        .ok_or_else(|| {
+                            ParseError::MissingField(format!(
+                                "Header with key {} was not found in the FieldTable!",
+                                field.to_string()
+                            ))
+                        })
+                        .and_then(|field_value| self.extract_string_from_byte_array(field_value))
+                        .ok()
+                },
+                None => None,
+            }
         };
 
         Ok(GameEventHeader {
-            event_id: Some(fetch_field("eventId")?),
-            version: Some(fetch_field("version")?),
-            player_id: Some(fetch_field("playerId")?),
-            timestamp: Some(fetch_field("timestamp")?),
-            transaction_id: Some(fetch_field("transactionId")?),
-            event_type: Some(fetch_field("type")?),
-            kafka_topic: Some(fetch_field("kafka-topic")?),
+            event_id: fetch_field("eventId"),
+            version: fetch_field("version"),
+            player_id: fetch_field("playerId"),
+            timestamp: fetch_field("timestamp"),
+            transaction_id: fetch_field("transactionId"),
+            event_type: fetch_field("type"),
+            kafka_topic: fetch_field("kafka-topic"),
         })
     }
 
@@ -89,10 +90,11 @@ impl AsyncConsumer for RabbitMQConsumer {
         _basic_properties: BasicProperties,
         content: Vec<u8>,
     ) {
-        let header = match self.parse_header(_basic_properties) {
+        let header = match self.parse_header(_basic_properties.clone()) {
             Ok(header) => header,
             Err(e) => {
                 error!("Error parsing header: {}", e);
+                //println!("Error with header: {:?}", std::str::from_utf8(_basic_properties.headers));
                 return;
             }
         };

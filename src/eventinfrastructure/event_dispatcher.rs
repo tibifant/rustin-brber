@@ -78,7 +78,7 @@ impl EventDispatcher {
             GameEventBodyType::RobotsRevealed(robots_revealed_event) => {
                 self.robots_revealed_event_handler.handle(robots_revealed_event).await;
             }
-            GameEventBodyType::PlanetResourceMined(planet_resource_mined_event) => {
+            GameEventBodyType::ResourceMined(planet_resource_mined_event) => {
                 self.resource_mined_event_handler.handle(planet_resource_mined_event).await;
             }
             GameEventBodyType::PlanetDiscovered(planet_discovered_event) => {
