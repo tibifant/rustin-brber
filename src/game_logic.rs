@@ -176,21 +176,41 @@ pub struct PermanetRobotInfo {
   pub energy_regen: u16,
   pub attack_damage: u16,
   pub mining_speed: u16,
-  pub inventory: Inventory,           
+  pub inventory: Inventory,
+  pub move_count: u16,   
+}
+
+impl PermanetRobotInfo {
+  pub fn new(id: String, player_id: String, max_health: u16,max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16, inventory: Inventory) -> Self {
+    let move_count = 0;
+    Self {
+      id,
+      player_id,
+      max_health,
+      max_energy,
+      energy_regen,
+      attack_damage,
+      mining_speed,
+      inventory,
+      move_count,
+    }
+  }
 }
 
 pub struct RobotDecisionInfo {
   pub id: String,
   pub action: Box<dyn Action + Send + Sync>,
+  pub sell_action: Box<dyn Action + Send + Sync>,
   pub upgrade_action: Box<dyn Action + Send + Sync>,
   pub has_upgrade: bool,
 }
 
 impl RobotDecisionInfo {
-  pub fn new(id: String, action: Box<dyn Action + Send + Sync>, upgrade_action: Box<dyn Action + Send + Sync>, has_upgrade: bool) -> Self {
+  pub fn new(id: String, action: Box<dyn Action + Send + Sync>, sell_action: Box<dyn Action + Send + Sync>, upgrade_action: Box<dyn Action + Send + Sync>, has_upgrade: bool) -> Self {
     Self {
       id,
       action,
+      sell_action,
       upgrade_action,
       has_upgrade,
     }
@@ -210,24 +230,9 @@ impl DecisionInfo {
   }
 }
 
-impl PermanetRobotInfo {
-  pub fn new(id: String, player_id: String, max_health: u16,max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16, inventory: Inventory) -> Self {
-    Self {
-      id,
-      player_id,
-      max_health,
-      max_energy,
-      energy_regen,
-      attack_damage,
-      mining_speed,
-      inventory,       
-    }
-  }
-}
-
 pub struct RoundData {
   pub robots: HashMap<String, MinimalRobot>,
-  pub enemy_robots: HashMap<String, MinimalRobot>, //TODO either make this MinimalRobot or have a PermanentRobot in the GameData with the other values
+  pub enemy_robots: HashMap<String, MinimalRobot>,
   pub planets: HashMap<String, Planet>,
   pub balance: f32,
   pub item_prices: HashMap<TradeItemType, f32>,
@@ -308,9 +313,7 @@ impl GameLogic {
     let mut decision_info = DecisionInfo::new();
 
     for (id, robot) in &mut self.game_data.robots {
-      let a: Box<dyn Action + Send + Sync> = Box::new(NoneAction::new());
-      let pa: Box<dyn Action + Send + Sync> = Box::new(NoneAction::new());
-      let r = RobotDecisionInfo::new(id.clone(), a, pa, false);
+      let r = RobotDecisionInfo::new(id.clone(), Box::new(NoneAction::new()), Box::new(NoneAction::new()), Box::new(NoneAction::new()), false);
       decision_info.robots.insert(id.clone(), r);
     }
 
@@ -318,7 +321,7 @@ impl GameLogic {
     for id in ids {
       if let Some(r) = decision_info.robots.get_mut(&id) {
         self.offer_movement_mining_attack_option(id.to_string(), r);
-        self.offer_sell_option(id.to_string(), r);
+        self.offer_sell_option(id.to_string(), r); // todo
       }
     }
     
@@ -328,8 +331,13 @@ impl GameLogic {
       }
     }
 
-    for (_id, robot) in &mut decision_info.robots {
+    for (id, robot) in &mut decision_info.robots {
+      if let Some(robot) = self.game_data.robots.get_mut(id) {
+        robot.move_count += 1;
+      }
+
       robot.action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()).await;
+      robot.sell_action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()).await;
       robot.upgrade_action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()).await;
     }
 
@@ -339,14 +347,12 @@ impl GameLogic {
   }
 
   fn offer_movement_mining_attack_option(&mut self, robot_id: String, robot_decision: &mut RobotDecisionInfo) {
-    if let Some(robot_info) = self.game_data.robots.get_mut(&robot_id) {
+    if let Some(robot_info) = self.game_data.robots.get(&robot_id) {
       if let Some(robot) = self.round_data.robots.get(&robot_id) {
         if robot.energy > 0 {
-          let planet = self.game_data.planets.get(&robot.planet_id);
-          
-          match planet {
-            Some(planet) => {
-              if let Some(resource) = planet.resource {
+          if let Some(planet) = self.game_data.planets.get(&robot.planet_id) {
+            let mut known_neighbours = 0;
+            if let Some(resource) = planet.resource {
               for (e_id, e) in &self.round_data.enemy_robots {
                 if e.planet_id == robot.planet_id {
                   let weight: f32 = (robot_info.attack_damage - e.damage_level.get_attack_damage_value_for_level()) as f32;
@@ -362,51 +368,67 @@ impl GameLogic {
               let mut best_planet = Direction::Here;
               let mut best_price = *self.round_data.resource_prices.get(&resource.resource_type).unwrap_or(&0.);
               let mut best_planet_amount = resource.current_amount;
+
+              if let Some(p) = self.game_data.planets.get(&planet.north) {
+                self.evaluate_planet(Direction::North, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
+                known_neighbours += 1;
+              }
             
-              if robot.energy > 0 {
-                if let Some(p) = self.game_data.planets.get(&planet.north) {
-                  self.evaluate_planet(Direction::North, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
-                }
-              
-                if let Some(p) = self.game_data.planets.get(&planet.south) {
-                  self.evaluate_planet(Direction::South, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
-                }
-              
-                if let Some(p) = self.game_data.planets.get(&planet.west) {
-                  self.evaluate_planet(Direction::West, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
-                }
-              
-                if let Some(p) = self.game_data.planets.get(&planet.east) {
-                  self.evaluate_planet(Direction::East, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
-                }
-              
-                if best_planet_amount as f32 * best_price > 0. {
-                  if best_planet != Direction::Here {
-                    let weight = best_price + best_planet_amount as f32;
-                  
-                    if robot_decision.action.get_weight() < weight {
-                      let movement_option: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(weight, best_planet, planet.clone()));
-                      robot_decision.action = movement_option;
-                    }
-                  } else {
-                    let weight = resource.current_amount /* LAST KNOWN, not *ACTUALLY* CURRENT */ as f32 + best_price;
-                  
-                    if robot_decision.action.get_weight() < weight {
-                      let mining_option: Box<dyn Action + Send + Sync> = Box::new(MineAction::new(weight, planet.id.to_string()));
-                      robot_decision.action = mining_option;
-                    }
+              if let Some(p) = self.game_data.planets.get(&planet.south) {
+                self.evaluate_planet(Direction::South, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
+                known_neighbours += 1;
+              }
+            
+              if let Some(p) = self.game_data.planets.get(&planet.west) {
+                self.evaluate_planet(Direction::West, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
+                known_neighbours += 1;
+              }
+            
+              if let Some(p) = self.game_data.planets.get(&planet.east) {
+                self.evaluate_planet(Direction::East, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
+                known_neighbours += 1;
+              }
+            
+              if best_planet_amount as f32 * best_price > 0. {
+                if best_planet != Direction::Here {
+                  let weight = best_price + best_planet_amount as f32;
+                
+                  if robot_decision.action.get_weight() < weight {
+                    let movement_option: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(weight, best_planet, planet.clone()));
+                    robot_decision.action = movement_option;
                   }
-                }
-                else {
-                  if robot_decision.action.get_weight() < 2000. {
-                    let a: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(2000., Direction::East, planet.clone()));
-                    robot_decision.action = a;
+                } else {
+                  let weight = resource.current_amount /* LAST KNOWN, not *ACTUALLY* CURRENT */ as f32 + best_price;
+                
+                  if robot_decision.action.get_weight() < weight {
+                    let mining_option: Box<dyn Action + Send + Sync> = Box::new(MineAction::new(weight, planet.id.to_string()));
+                    robot_decision.action = mining_option;
                   }
                 }
               }
+              else {
+                if robot_decision.action.get_weight() < 20000. {
+                  let a: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(20000., Direction::East, planet.clone()));
+                  robot_decision.action = a;
+                }
+              }
             }
+            else {
+              if robot_decision.action.get_weight() < 20000. {
+                let a: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(20000., Direction::East, planet.clone()));
+                robot_decision.action = a;
+              }
             }
-            None => {}
+
+            if known_neighbours < 4 && robot_info.move_count < 4 {
+              match robot_info.move_count {
+                0 => robot_decision.action = Box::new(MovementAction::new(9999999., Direction::North, planet.clone())),
+                1 => robot_decision.action = Box::new(MovementAction::new(9999999., Direction::East, planet.clone())),
+                2 | 3 => robot_decision.action = Box::new(MovementAction::new(9999999., Direction::South, planet.clone())),
+                _ => (),
+              }
+            }
+
           }
         }
         else {
@@ -430,13 +452,9 @@ impl GameLogic {
 
   fn offer_sell_option(&mut self, robot_id: String, robot_decision: &mut RobotDecisionInfo) {
     if let Some(robot_info) = self.game_data.robots.get_mut(&robot_id) {
-      if let Some(robot) = self.round_data.robots.get(robot_info.id.as_str()) {
-        let inventory_weight = 0.1 * ((robot_info.max_health - robot.health) as f32) * (robot_info.inventory.coal as f32) * self.round_data.resource_prices.get(&MineableResourceType::COAL).unwrap_or(&0.) + (robot_info.inventory.gem as f32) * self.round_data.resource_prices.get(&MineableResourceType::GEM).unwrap_or(&0.) + (robot_info.inventory.gold  as f32) * self.round_data.resource_prices.get(&MineableResourceType::GOLD).unwrap_or(&0.)+ (robot_info.inventory.iron as f32) * self.round_data.resource_prices.get(&MineableResourceType::IRON).unwrap_or(&0.) + (robot_info.inventory.platin as f32) * self.round_data.resource_prices.get(&MineableResourceType::PLATIN).unwrap_or(&0.);
-
-        if inventory_weight > robot_decision.action.get_weight() {
-          let inventory_option: Box<dyn Action + Send + Sync> = Box::new(SellAction::new(inventory_weight as f32));
-          robot_decision.action = inventory_option;
-        }
+      if robot_info.inventory.used_storage > 0 {
+        let inventory_option: Box<dyn Action + Send + Sync> = Box::new(SellAction::new(1.));
+        robot_decision.sell_action = inventory_option;
       }
     }
   }
@@ -502,7 +520,7 @@ impl GameLogic {
                       if self.round_data.balance >= *item_price {
                         if let Some(resource) = planet.resource {
                           if let Some(resource_price) = self.round_data.resource_prices.get(&resource.resource_type) {
-                            let weight = (resource.current_amount as f32) * resource_price + robot_info.inventory.  used_storage as f32;
+                            let weight = (resource.current_amount as f32) * resource_price + robot_info.inventory.  used_storage as f32; // LAST KNOWN, not *ACTUALLY* CURRENT
                             if weight > best_weight as f32 {
                               best_weight = weight;
                               best_item = next_level_item;
