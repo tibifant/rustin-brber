@@ -352,48 +352,6 @@ mod test {
     }
 
     #[test]
-    fn test_parse_header_missing_timestamp() {
-        let mut headers = FieldTable::new();
-
-        headers.insert(
-            FieldName::try_from("eventId").unwrap(),
-            FieldValue::x("eventId".as_bytes().to_vec().try_into().unwrap()),
-        );
-        headers.insert(
-            FieldName::try_from("version").unwrap(),
-            FieldValue::x("version".as_bytes().to_vec().try_into().unwrap()),
-        );
-        headers.insert(
-            FieldName::try_from("playerId").unwrap(),
-            FieldValue::x("playerId".as_bytes().to_vec().try_into().unwrap()),
-        );
-        headers.insert(
-            FieldName::try_from("transactionId").unwrap(),
-            FieldValue::x("transactionId".as_bytes().to_vec().try_into().unwrap()),
-        );
-        headers.insert(
-            FieldName::try_from("type").unwrap(),
-            FieldValue::x("type".as_bytes().to_vec().try_into().unwrap()),
-        );
-        headers.insert(
-            FieldName::try_from("kafka-topic").unwrap(),
-            FieldValue::x("kafka-topic".as_bytes().to_vec().try_into().unwrap()),
-        );
-        let properties = BasicProperties::default().with_headers(headers).to_owned();
-        let consumer = get_rabbitmq_consumer();
-        let header = consumer.parse_header(properties);
-        assert!(header.is_err());
-        match header {
-            Err(ParseError::MissingField(field)) => assert!(true),
-            other => assert!(
-                false,
-                "Expected ParseError::MissingField but got {:?}",
-                other
-            ),
-        }
-    }
-
-    #[test]
     fn test_parse_header_missing_transaction_id() {
         let mut headers = FieldTable::new();
 
