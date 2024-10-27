@@ -405,6 +405,11 @@ impl GameLogicService {
       }
     }
   }
+  pub fn update_robot_energy(&mut self, robot_id: String, available_energy: u16) {
+    if let Some(r) = self.round_data.robots.get_mut(&robot_id) {
+      r.energy = available_energy
+    }
+  }
 
   pub fn update_planet(&mut self, planet_id: String, mined_amount: u32) {
     if let Some(planet) = self.round_data.planets.get_mut(&planet_id) {
