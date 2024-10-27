@@ -743,7 +743,9 @@ impl Action for MovementAction {
       _ => return,
     }
 
-    let command = Command::create_movement_command(player_id, robot_id, planet_id);
+    let command = Command::create_movement_command(player_id, robot_id.clone(), planet_id.clone());
+    info!("====> Trying to move!!!!!!!!!!!");
+    info!("robot ({}) moves to ({})", robot_id.clone(), planet_id.clone());
     game_service_rest_adapter.send_command(command).await;
   }
 }
