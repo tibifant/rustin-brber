@@ -20,6 +20,7 @@ use crate::eventinfrastructure::event_handler::EventHandler;
 use crate::eventinfrastructure::map::planet_discovered_event::PlanetDiscoveredEvent;
 use crate::eventinfrastructure::map::planet_resource_mined_event::PlanetResourceMinedEvent;
 use crate::eventinfrastructure::robot;
+use crate::eventinfrastructure::robot::robot_moved_event::RobotMovedEvent;
 use crate::eventinfrastructure::robot::robot_resource_mined_event::RobotResourceMinedEvent;
 use crate::eventinfrastructure::robot::robot_resource_removed_event::RobotResourceRemovedEvent;
 use crate::eventinfrastructure::robot::robots_revealed_event::RobotsRevealedEvent;
@@ -129,6 +130,7 @@ impl TradeItemType {
   }
 }
 
+#[derive(Clone)]
 pub struct Planet {
   pub id: String,
   pub resource: Option<MineableResource>,
@@ -168,7 +170,7 @@ impl PermanentPlanetInfo {
   }
 }
 
-pub struct PermanetRobotInfo {
+pub struct PermanentRobotInfo {
   pub id: String,
   pub player_id: String,
   pub max_health: u16,
@@ -180,7 +182,7 @@ pub struct PermanetRobotInfo {
   pub move_count: u16,   
 }
 
-impl PermanetRobotInfo {
+impl PermanentRobotInfo {
   pub fn new(id: String, player_id: String, max_health: u16,max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16, inventory: Inventory) -> Self {
     let move_count = 0;
     Self {
@@ -259,7 +261,7 @@ impl RoundData {
 
 pub struct GameData {
   pub planets: HashMap<String, PermanentPlanetInfo>,
-  pub robots: HashMap<String, PermanetRobotInfo>,
+  pub robots: HashMap<String, PermanentRobotInfo>,
   pub player_id: String,
   pub robot_buy_amount: u16,
 }
@@ -621,7 +623,7 @@ impl GameLogic {
 
   pub fn save_robot(&mut self, robot: Robot) {
     if robot.player_id == self.game_data.player_id {
-      let new_robot_info = PermanetRobotInfo::new(robot.robot_info.id.clone(), robot.player_id, robot.max_health, robot.max_energy, robot.energy_regen, robot.attack_damage, robot.mining_speed, robot.inventory);
+      let new_robot_info = PermanentRobotInfo::new(robot.robot_info.id.clone(), robot.player_id, robot.max_health, robot.max_energy, robot.energy_regen, robot.attack_damage, robot.mining_speed, robot.inventory);
       
       self.game_data.robots.insert(new_robot_info.id.clone(), new_robot_info);      
       self.round_data.robots.insert(robot.robot_info.id.clone(), robot.robot_info);
@@ -705,6 +707,19 @@ impl GameLogic {
     }
   }
 
+  pub fn update_robot_location(&mut self, robot_id: String, new_planet: String, remaining_energy: u16) {
+    if let Some(r) = self.round_data.robots.get_mut(&robot_id) {
+      r.planet_id = new_planet;
+      r.energy = remaining_energy;
+    }
+    else {
+      if let Some(r) = self.round_data.robots.get_mut(&robot_id) {
+        r.planet_id = new_planet;
+        r.energy = remaining_energy;
+      }
+    }
+  }
+
   pub fn update_planet(&mut self, planet_id: String, mined_amount: u32) {
     if let Some(planet) = self.round_data.planets.get_mut(&planet_id) {
       if let Some(mut r) = planet.resource {
@@ -720,8 +735,10 @@ impl GameLogic {
   }
 
   pub fn save_planet(&mut self, planet: Planet, planet_info: PermanentPlanetInfo) {
-    self.round_data.planets.insert(planet.id.clone(), planet);
-    self.game_data.planets.insert(planet_info.id.clone(), planet_info);
+    self.round_data.planets.insert(planet.id.clone(), planet.clone());
+    self.game_data.planets.insert(planet_info.id.clone(), planet_info.clone());
+
+    print!("\n\n\nsaving planet ({}) with neigbours: \n north: {}\n east: {}\n south: {}\n west: {}\n\n\n", planet.id, planet_info.north, planet_info.east, planet_info.south, planet_info.west)
   }
 
   pub fn clear_game(&mut self) {
@@ -781,7 +798,7 @@ impl Action for MovementAction {
 
     let command = Command::create_movement_command(player_id, robot_id.clone(), planet_id.clone());
     info!("====> Trying to move!!!!!!!!!!!");
-    info!("robot ({}) moves to ({})", robot_id.clone(), planet_id.clone());
+    info!("robot ({}) moves from ({}) to ({})", robot_id.clone(), self.current_planet.id, planet_id.clone());
     game_service_rest_adapter.send_command(command).await;
   }
 }
@@ -1255,6 +1272,25 @@ impl RobotResourceRemovedEventHandler {
 impl EventHandler<RobotResourceRemovedEvent> for RobotResourceRemovedEventHandler {
   async fn handle(&self, event: RobotResourceRemovedEvent) {
     self.game.lock().await.update_inventory_remove(event.robot_id, event.removed_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
+  }
+}
+
+pub struct RobotMovedEventHandler {
+  game: Arc<Mutex<GameLogic>>,
+}
+
+impl RobotMovedEventHandler {
+  pub fn new(game: Arc<Mutex<GameLogic>>) -> Self {
+    Self {
+      game,
+    }
+  }
+}
+
+#[async_trait]
+impl EventHandler<RobotMovedEvent> for RobotMovedEventHandler {
+  async fn handle(&self, event: RobotMovedEvent) {
+    self.game.lock().await.update_robot_location(event.robot_id, event.to_planet.planet_id, event.remaining_energy);
   }
 }
 
