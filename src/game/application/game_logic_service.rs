@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::domainprimitives::command::action::{execute_purchase_robots_command, Action, AttackAction, MineAction, MovementAction, NoneAction, PurchaseAction, RegenerateAction, SellAction};
 use crate::domainprimitives::location::direction::Direction;
 use crate::domainprimitives::location::mineable_resource_type::MineableResourceType;
+use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 use crate::domainprimitives::purchasing::robot_upgrade_type::RobotUpgradeType;
 use crate::domainprimitives::purchasing::trade_item_type::TradeItemType;
 use crate::game::domain::game_logic_info::{GameDecisionInfo, PersistentData, TransientData};
@@ -41,7 +42,7 @@ impl GameLogicService {
     for id in ids {
       if let Some(r) = decision_info.robots.get_mut(&id) {
         self.offer_movement_mining_attack_option(id.to_string(), r);
-        self.offer_sell_option(id.to_string(), r); // todo
+        self.offer_sell_option(id.to_string(), r);
       }
     }
     
@@ -184,7 +185,7 @@ impl GameLogicService {
   fn offer_sell_option(&mut self, robot_id: String, robot_decision: &mut RobotDecisionInfo) {
     if let Some(robot_info) = self.game_data.robots.get(&robot_id) {
       if !robot_info.inventory.full {
-          let inventory_weight = robot_info.inventory.used_storage as f32 * 100.;
+          let inventory_weight = robot_info.inventory.used_storage as f32 * 1000.;
           
           if inventory_weight > robot_decision.action.get_weight() {
             let inventory_option: Box<dyn Action + Send + Sync> = Box::new(SellAction::new(inventory_weight as f32));
@@ -200,117 +201,72 @@ impl GameLogicService {
   }
 
   fn spend_money(&mut self, decision_info: &mut GameDecisionInfo) -> bool {
-    let mut best_weight: f32 = 0.;
-    let mut best_item = TradeItemType::Robot;
-    let mut best_id: Option<String> = None;
-    let mut is_upgrade = false;
-
+    let mut lowest_level_robot = String::new();
+    let mut lowest_robot_level : RobotLevel = RobotLevel::LEVEL5;
+    let mut highest_robot_level : RobotLevel = RobotLevel::LEVEL0;
     let ids: Vec<String> = self.game_data.robots.keys().cloned().collect();
-    for id in ids {
-      if let Some(robot_decision_info) = decision_info.robots.get(&id) {
-        if let Some(robot_info) = self.game_data.robots.get(&id) {
-          if let Some(robot) = self.round_data.robots.get(&id) {
-            if !robot_decision_info.has_upgrade {
-              if let Some(health_price) = self.round_data.item_prices.get(&TradeItemType::HealthRestore) {
-                if self.round_data.balance >= *health_price {
-                  let weight = (robot_info.max_health - robot.health) * robot.health_level.get_value_for_level() + robot.damage_level.get_value_for_level() + robot.mining_speed_level.get_value_for_level();
-                  let item = TradeItemType::HealthRestore;
-                
-                  if weight as f32 > best_weight {
-                    best_weight = weight as f32;
-                    best_item = item;
-                    best_id = Some(id.clone());
-                    is_upgrade = false;
-                  }
-                
-                  if best_weight < 50. && *health_price > 10. + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0.) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0.){
-                    if (1000. > best_weight) {
-                      best_item = TradeItemType::Robot;
-                      best_weight = 1000.;
-                      is_upgrade = false;
-                    }
-                  } 
-                }
-              }
-              if let Some(energy_price) = self.round_data.item_prices.get(&TradeItemType::EnergyRestore) {
-                if self.round_data.balance >= *energy_price {
-                  let weight = (robot_info.max_energy - robot.energy) * robot.energy_level.get_value_for_level() * robot.damage_level.get_value_for_level() * robot.mining_speed_level.get_value_for_level();
-                  let item = TradeItemType::EnergyRestore;
-                
-                  if weight as f32 > best_weight {
-                    best_weight = weight as f32;
-                    best_item = item;
-                    best_id = Some(id.clone());
-                    is_upgrade = false;
-                  }
-                  if best_weight < 50. && *energy_price > 10. + self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0.) && self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&0.) {
-                    if (1000. > best_weight) {
-                      best_item = TradeItemType::Robot;
-                      best_weight = 1000.;
-                      is_upgrade = false;
-                    }
-                  } 
-                }
-              }
+    let robot_count = ids.len();
 
-              if let Some(planet) = self.game_data.planets.get(robot.planet_id.as_str()) {
-                if !robot.storage_level.is_maximum_level() {
-                  if let Some(next_level_item) = TradeItemType::get_next_level_item(RobotUpgradeType::Storage, robot.storage_level.get_value_for_level()) {
-                    if let Some(item_price) = self.round_data.item_prices.get(&next_level_item) {
-                      if self.round_data.balance >= *item_price {
-                        if let Some(resource) = planet.resource {
-                          if let Some(resource_price) = self.round_data.resource_prices.get(&resource.resource_type) {
-                            let weight = (resource.current_amount as f32) * resource_price + robot_info.inventory.  used_storage as f32; // LAST KNOWN, not *ACTUALLY* CURRENT
-                            if weight > best_weight as f32 {
-                              best_weight = weight;
-                              best_item = next_level_item;
-                              best_id = Some(id.clone());
-                              is_upgrade = true;
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              // Posibility to implement other upgrade options here
-            }
+    for id in ids {
+      if let Some(robot) = self.round_data.robots.get(&id) {
+        if let Some(robot_decision_info) = decision_info.robots.get_mut(&id) {
+          if (robot_decision_info.has_upgrade) {
+            continue;
           }
+        }
+
+        if ((robot.mining_level as u16) < (lowest_robot_level as u16)) {
+          lowest_level_robot = id;
+          lowest_robot_level = robot.mining_level;
+        }
+
+        if ((robot.mining_level as u16) > (highest_robot_level as u16)) {
+          highest_robot_level = robot.mining_level;
         }
       }
     }
 
-    if (self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&1000000.)) {
-      if 1000. >= best_weight {
-        best_item = TradeItemType::Robot;
-        best_weight = 1000.;
+    let min_robot_count = ((highest_robot_level as usize) + 1) * 3;
+
+    if lowest_robot_level == highest_robot_level || robot_count < min_robot_count || lowest_level_robot.is_empty() {
+      if self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.) {
+        self.game_data.robot_buy_amount += 1;
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      // buy upgrade for lowest_level_robot, if sufficient funds.
+      if let Some(item) = TradeItemType::get_next_level_item(RobotUpgradeType::Mining, (lowest_robot_level as u16) + 1) {
+        if self.round_data.balance >= *self.round_data.item_prices.get(&item).unwrap_or(&99999.) {
+          if let Some(r) = decision_info.robots.get_mut(&lowest_level_robot) {
+            r.has_upgrade = true;
+            r.upgrade_action = Box::new(PurchaseAction::new(10000., item));
+            return true;
+          }
+        } else {
+          return false;
+        }
       }
     }
 
-    if best_weight > 0. {
-      if best_item == TradeItemType::Robot {
-        self.round_data.balance -= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&10000000.);
-        self.game_data.robot_buy_amount += 1;
-        return true;
-      }
-
-      if let Some(id) = best_id {
-        if let Some(best_robot) = decision_info.robots.get_mut(&id) {
-          if !is_upgrade {
-            if best_weight > best_robot.action.get_weight() {
-              let a: Box<dyn Action + Send + Sync> = Box::new(PurchaseAction::new(best_weight as f32, best_item));
-              best_robot.action = a;
-              self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000.);
-              return true;
+    let ids: Vec<String> = self.game_data.robots.keys().cloned().collect();
+    for id in ids {
+      if let Some(robot_decision_info) = decision_info.robots.get_mut(&id) {
+        if let Some(robot_info) = self.game_data.robots.get(&id) {
+          if let Some(robot) = self.round_data.robots.get(&id) {
+            if !robot_decision_info.has_upgrade {
+              if let Some(health_price) = self.round_data.item_prices.get(&TradeItemType::HealthRestore) {
+                if self.round_data.balance >= *health_price && robot.health < 1 {
+                  let weight = 3000.;
+                  let item = TradeItemType::HealthRestore;
+                  
+                  robot_decision_info.has_upgrade = true;
+                  robot_decision_info.upgrade_action = Box::new(PurchaseAction::new(weight, item));
+                  return true;
+                }
+              }
             }
-          }
-          else {
-            let a: Box<dyn Action + Send + Sync> = Box::new(PurchaseAction::new(best_weight as f32, best_item));
-            best_robot.upgrade_action = a;
-            best_robot.has_upgrade = true;
-            self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000.);
-            return true;
           }
         }
       }
@@ -347,6 +303,7 @@ impl GameLogicService {
       
       self.game_data.robots.insert(new_robot_info.id.clone(), new_robot_info);      
       self.round_data.robots.insert(robot.robot_info.id.clone(), robot.robot_info);
+      self.game_data.robot_count += 1;
     }
     else {
       self.round_data.enemy_robots.insert(robot.robot_info.id.clone(), robot.robot_info);
@@ -357,6 +314,7 @@ impl GameLogicService {
     if updated_robot.health == 0 {
       self.round_data.robots.remove(&updated_robot.id);
       self.game_data.robots.remove(&updated_robot.id);
+      self.game_data.robot_count -= 1;
       return;
     }
 
