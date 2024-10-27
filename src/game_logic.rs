@@ -200,17 +200,15 @@ impl PermanetRobotInfo {
 pub struct RobotDecisionInfo {
   pub id: String,
   pub action: Box<dyn Action + Send + Sync>,
-  pub sell_action: Box<dyn Action + Send + Sync>,
   pub upgrade_action: Box<dyn Action + Send + Sync>,
   pub has_upgrade: bool,
 }
 
 impl RobotDecisionInfo {
-  pub fn new(id: String, action: Box<dyn Action + Send + Sync>, sell_action: Box<dyn Action + Send + Sync>, upgrade_action: Box<dyn Action + Send + Sync>, has_upgrade: bool) -> Self {
+  pub fn new(id: String, action: Box<dyn Action + Send + Sync>, upgrade_action: Box<dyn Action + Send + Sync>, has_upgrade: bool) -> Self {
     Self {
       id,
       action,
-      sell_action,
       upgrade_action,
       has_upgrade,
     }
@@ -313,7 +311,7 @@ impl GameLogic {
     let mut decision_info = DecisionInfo::new();
 
     for (id, robot) in &mut self.game_data.robots {
-      let r = RobotDecisionInfo::new(id.clone(), Box::new(NoneAction::new()), Box::new(NoneAction::new()), Box::new(NoneAction::new()), false);
+      let r = RobotDecisionInfo::new(id.clone(), Box::new(NoneAction::new()), Box::new(NoneAction::new()), false);
       decision_info.robots.insert(id.clone(), r);
     }
 
@@ -337,7 +335,6 @@ impl GameLogic {
       }
 
       robot.action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()).await;
-      robot.sell_action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()).await;
       robot.upgrade_action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()).await;
     }
 
@@ -364,7 +361,7 @@ impl GameLogic {
                   break;
                 }
               }
-            
+              
               let mut best_planet = Direction::Here;
               let mut best_price = *self.round_data.resource_prices.get(&resource.resource_type).unwrap_or(&0.);
               let mut best_planet_amount = resource.current_amount;
@@ -397,7 +394,7 @@ impl GameLogic {
                     let movement_option: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(weight, best_planet, planet.clone()));
                     robot_decision.action = movement_option;
                   }
-                } else {
+                } else if !robot_info.inventory.full {
                   let weight = resource.current_amount /* LAST KNOWN, not *ACTUALLY* CURRENT */ as f32 + best_price;
                 
                   if robot_decision.action.get_weight() < weight {
@@ -422,9 +419,21 @@ impl GameLogic {
 
             if known_neighbours < 4 && robot_info.move_count < 4 {
               match robot_info.move_count {
-                0 => robot_decision.action = Box::new(MovementAction::new(9999999., Direction::North, planet.clone())),
-                1 => robot_decision.action = Box::new(MovementAction::new(9999999., Direction::East, planet.clone())),
-                2 | 3 => robot_decision.action = Box::new(MovementAction::new(9999999., Direction::South, planet.clone())),
+                0 => { 
+                    if planet.north != "" {
+                      robot_decision.action = Box::new(MovementAction::new(9999999., Direction::North, planet.clone()));
+                    }
+                  }
+                1 =>  {
+                    if planet.east != "" {
+                      robot_decision.action = Box::new(MovementAction::new(9999999., Direction::East, planet.clone()));
+                    }
+                  }
+                2 | 3 =>  {
+                    if planet.south != "" { 
+                      robot_decision.action = Box::new(MovementAction::new(9999999., Direction::South, planet.clone()));
+                    }
+                  }
                 _ => (),
               }
             }
@@ -451,10 +460,19 @@ impl GameLogic {
   }
 
   fn offer_sell_option(&mut self, robot_id: String, robot_decision: &mut RobotDecisionInfo) {
-    if let Some(robot_info) = self.game_data.robots.get_mut(&robot_id) {
-      if robot_info.inventory.used_storage > 0 {
-        let inventory_option: Box<dyn Action + Send + Sync> = Box::new(SellAction::new(1.));
-        robot_decision.sell_action = inventory_option;
+    if let Some(robot_info) = self.game_data.robots.get(&robot_id) {
+      if !robot_info.inventory.full {
+          let inventory_weight = robot_info.inventory.used_storage as f32 * 100.;
+          
+          if inventory_weight > robot_decision.action.get_weight() {
+            let inventory_option: Box<dyn Action + Send + Sync> = Box::new(SellAction::new(inventory_weight as f32));
+            robot_decision.action = inventory_option;
+          }
+      }
+      else {
+        if 200000. > robot_decision.action.get_weight() {
+          robot_decision.action = Box::new(SellAction::new(200000.));
+        }
       }
     }
   }
