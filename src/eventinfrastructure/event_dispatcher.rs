@@ -2,13 +2,16 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::eventinfrastructure::event_handler::EventHandler;
+use crate::game::application::game_logic_service::GameLogicService;
+use crate::planet::application::planet_event_handler::{PlanetDiscoveredEventHandler, ResourceMinedEventHandler};
+use crate::robot::application::robot_event_handler::{RobotMovedEventHandler, RobotResourceMinedEventHandler, RobotResourceRemovedEventHandler, RobotsRevealedEventHandler};
+use crate::transaction::application::transaction_event_handler::{BankAccountInitializedEventHandler, BankAccountTransactionBookedEventHandler, TradablePricesEventHandler};
+use crate::{eventinfrastructure::event_handler::EventHandler, robot::application::robot_event_handler::RobotSpawnedEventHandler};
 use crate::eventinfrastructure::game_event::GameEvent;
 use crate::eventinfrastructure::game_event_body_type::GameEventBodyType;
 use crate::game::application::game_application_service::GameApplicationService;
 use crate::game::application::game_status_event_handler::GameStatusEventHandler;
 use crate::game::application::round_status_event_handler::RoundStatusEventHandler;
-use crate::game_logic::{BankAccountInitializedEventHandler, BankAccountTransactionBookedEventHandler, GameLogic, PlanetDiscoveredEventHandler, ResourceMinedEventHandler, RobotMovedEventHandler, RobotResourceMinedEventHandler, RobotResourceRemovedEventHandler, RobotSpawnedEventHandler, RobotsRevealedEventHandler, TradablePricesEventHandler};
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
@@ -34,7 +37,7 @@ impl EventDispatcher {
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
         game_application_service: Arc<GameApplicationService>,
         player_application_service: Arc<PlayerApplicationService>,
-        game_logic: Arc<Mutex<GameLogic>>,
+        game_logic: Arc<Mutex<GameLogicService>>,
     ) -> Self {
         Self {
             game_status_event_handler: GameStatusEventHandler::new(

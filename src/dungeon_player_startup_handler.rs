@@ -7,7 +7,7 @@ use crate::config::CONFIG;
 use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
 use crate::eventinfrastructure::rabbitmq::rabbitmq_connection_handler::RabbitMQConnectionHandler;
 use crate::game::application::game_application_service::GameApplicationService;
-use crate::game_logic::GameLogic;
+use crate::game::application::game_logic_service::GameLogicService;
 use crate::player::application::player_application_service::{self, PlayerApplicationService};
 use crate::player::domain::player::Player;
 use crate::rest::game_service_rest_adapter_impl::*;
@@ -17,14 +17,14 @@ pub struct DungeonPlayerStartupHandler {
     player_application_service: Arc<PlayerApplicationService>,
     game_application_service: Arc<GameApplicationService>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-    game_logic: Arc<Mutex<GameLogic>>,
+    game_logic: Arc<Mutex<GameLogicService>>,
     rabbitmq_connection_handler: RabbitMQConnectionHandler,
 }
 
 impl DungeonPlayerStartupHandler {
     pub async fn new() -> Self {
         let game_service_rest_adapter = Arc::new(GameServiceRestAdapterImpl::new());
-        let game_logic = Arc::new(Mutex::new(GameLogic::new()));
+        let game_logic = Arc::new(Mutex::new(GameLogicService::new()));
         let player_application_service = Arc::new(PlayerApplicationService::new(
             game_service_rest_adapter.clone(),
             game_logic.clone(),

@@ -7,7 +7,8 @@ mod player;
 mod repository;
 mod rest;
 mod robot;
-mod game_logic;
+mod planet;
+mod transaction;
 
 #[tokio::main]
 async fn main() {

@@ -5,20 +5,21 @@ use tracing::{error, info, warn};
 
 use crate::config::CONFIG;
 use crate::game::domain::game::Game;
-use crate::game_logic::GameLogic;
 use crate::repository::{AsyncRepository, InMemoryRepository};
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
+
+use super::game_logic_service::GameLogicService;
 
 pub struct GameApplicationService {
     game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-    game_logic: Arc<Mutex<GameLogic>>,
+    game_logic: Arc<Mutex<GameLogicService>>,
 }
 
 impl GameApplicationService {
     pub fn new(
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-        game_logic: Arc<Mutex<GameLogic>>,
+        game_logic: Arc<Mutex<GameLogicService>>,
     ) -> Self {
         let game_repository = Box::new(InMemoryRepository::new());
         Self {

@@ -1,8 +1,9 @@
+use crate::domainprimitives::command::action::Action;
 use crate::domainprimitives::purchasing::robot_level::RobotLevel;
 use crate::repository::Identifiable;
 
 #[derive(Debug, Clone)]
-pub struct MinimalRobot {
+pub struct TransientRobotInfo {
   pub id: String,
   pub planet_id: String,
 
@@ -32,7 +33,7 @@ pub struct Inventory {
 
 #[derive(Debug, Clone)]
 pub struct Robot {
-  pub robot_info: MinimalRobot,
+  pub robot_info: TransientRobotInfo,
   pub inventory: Inventory,
   pub max_health: u16,
   pub max_energy: u16,
@@ -42,7 +43,7 @@ pub struct Robot {
   pub player_id: String
 }
 
-impl MinimalRobot {
+impl TransientRobotInfo {
   pub fn new(id: String, planet_id: String, energy: u16, health: u16, health_level: RobotLevel, damage_level: RobotLevel, mining_speed_level: RobotLevel, mining_level: RobotLevel, energy_level: RobotLevel, energy_regen_level: RobotLevel, storage_level: RobotLevel) -> Self {
     Self {
       id,
@@ -75,8 +76,55 @@ impl Inventory {
   }
 }
 
+pub struct PersistentRobotInfo {
+  pub id: String,
+  pub player_id: String,
+  pub max_health: u16,
+  pub max_energy: u16,
+  pub energy_regen: u16,
+  pub attack_damage: u16,
+  pub mining_speed: u16,
+  pub inventory: Inventory,
+  pub move_count: u16,   
+}
+
+impl PersistentRobotInfo {
+  pub fn new(id: String, player_id: String, max_health: u16,max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16, inventory: Inventory) -> Self {
+    let move_count = 0;
+    Self {
+      id,
+      player_id,
+      max_health,
+      max_energy,
+      energy_regen,
+      attack_damage,
+      mining_speed,
+      inventory,
+      move_count,
+    }
+  }
+}
+
+pub struct RobotDecisionInfo {
+  pub id: String,
+  pub action: Box<dyn Action + Send + Sync>,
+  pub upgrade_action: Box<dyn Action + Send + Sync>,
+  pub has_upgrade: bool,
+}
+
+impl RobotDecisionInfo {
+  pub fn new(id: String, action: Box<dyn Action + Send + Sync>, upgrade_action: Box<dyn Action + Send + Sync>, has_upgrade: bool) -> Self {
+    Self {
+      id,
+      action,
+      upgrade_action,
+      has_upgrade,
+    }
+  }
+}
+
 impl Robot {
-  pub fn new(robot_info: MinimalRobot, inventory: Inventory, max_health: u16, max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16, player_id: String) -> Self {
+  pub fn new(robot_info: TransientRobotInfo, inventory: Inventory, max_health: u16, max_energy: u16, energy_regen: u16, attack_damage: u16, mining_speed: u16, player_id: String) -> Self {
     Self {
       robot_info,
       inventory,
@@ -89,7 +137,7 @@ impl Robot {
     }
   }
 
-  pub fn check_health(&self, robot_info: MinimalRobot) -> bool {
+  pub fn check_health(&self, robot_info: TransientRobotInfo) -> bool {
     if robot_info.health == 0 {
       return false;
     }
@@ -97,7 +145,7 @@ impl Robot {
     return true;
   }
 
-  pub fn update(&mut self, robot_info: MinimalRobot) {
+  pub fn update(&mut self, robot_info: TransientRobotInfo) {
     self.robot_info = robot_info;
   }
 }

@@ -3,8 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{error, info};
 
-use crate::game_logic;
-use crate::game_logic::GameLogic;
+use crate::game::application::game_logic_service::GameLogicService;
 use crate::player::domain::player::Player;
 use crate::repository::AsyncRepository;
 use crate::repository::InMemoryRepository;
@@ -13,13 +12,13 @@ use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 pub struct PlayerApplicationService {
     player_repository: Box<dyn AsyncRepository<Player> + Send + Sync>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-    game_logic: Arc<Mutex<GameLogic>>,
+    game_logic: Arc<Mutex<GameLogicService>>,
 }
 
 impl PlayerApplicationService {
     pub fn new(
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-        game_logic: Arc<Mutex<GameLogic>>,
+        game_logic: Arc<Mutex<GameLogicService>>,
     ) -> Self {
         Self {
             player_repository: Box::new(InMemoryRepository::new()),

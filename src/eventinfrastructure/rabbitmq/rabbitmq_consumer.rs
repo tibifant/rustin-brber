@@ -152,7 +152,7 @@ mod test {
 
     use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
     use crate::game::application::game_application_service::GameApplicationService;
-    use crate::game_logic::GameLogic;
+    use crate::game::application::game_logic_service::GameLogicService;
     use crate::player::application::player_application_service::PlayerApplicationService;
     use crate::rest::game_service_rest_adapter_impl::{self, GameServiceRestAdapterImpl};
 
@@ -160,7 +160,7 @@ mod test {
 
     fn get_rabbitmq_consumer() -> RabbitMQConsumer {
         let game_service_rest_adapter = Arc::new(GameServiceRestAdapterImpl::new());
-        let game_logic = Arc::new(Mutex::new(GameLogic::new()));
+        let game_logic = Arc::new(Mutex::new(GameLogicService::new()));
         let player_application_service = Arc::new(PlayerApplicationService::new(
             game_service_rest_adapter.clone(),
             game_logic.clone()
