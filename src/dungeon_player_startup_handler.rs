@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tracing::error;
 
@@ -6,40 +6,34 @@ use crate::config::CONFIG;
 use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
 use crate::eventinfrastructure::rabbitmq::rabbitmq_connection_handler::RabbitMQConnectionHandler;
 use crate::game::application::game_application_service::GameApplicationService;
+use crate::game_logic::GameLogic;
 use crate::player::application::player_application_service::{self, PlayerApplicationService};
 use crate::player::domain::player::Player;
 use crate::repository::InMemoryRepository;
 use crate::rest::game_service_rest_adapter_impl::*;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
-use crate::robot::application::robot_application_service::{self, RobotApplicationService};
 
 pub struct DungeonPlayerStartupHandler {
     player_application_service: Arc<PlayerApplicationService>,
-    robot_application_service: Arc<RobotApplicationService>,
     game_application_service: Arc<GameApplicationService>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
+    game_logic: Arc<Mutex<GameLogic>>,
     rabbitmq_connection_handler: RabbitMQConnectionHandler,
 }
 
 impl DungeonPlayerStartupHandler {
     pub async fn new() -> Self {
         let game_service_rest_adapter = Arc::new(GameServiceRestAdapterImpl::new());
+        let game_logic = Arc::new(Mutex::new(GameLogic::new()));
         let player_application_service = Arc::new(PlayerApplicationService::new(
-            game_service_rest_adapter.clone()));
-        let robot_application_service = Arc::new(RobotApplicationService::new(
             game_service_rest_adapter.clone(),
-            player_application_service.clone(),
-        ));
+            game_logic.clone(),
+            ));
         Self {
             player_application_service: player_application_service.clone(),
-            robot_application_service: robot_application_service.clone(),
-            game_application_service: Arc::new(GameApplicationService::new(
-                Box::new(InMemoryRepository::new()),
-                game_service_rest_adapter.clone(),
-                player_application_service.clone(),
-                robot_application_service.clone(),
-            )),
-            game_service_rest_adapter: game_service_rest_adapter.clone(),
+            game_application_service: Arc::new(GameApplicationService::new(game_service_rest_adapter.clone(), game_logic.clone())),
+            game_service_rest_adapter,
+            game_logic,
             rabbitmq_connection_handler: RabbitMQConnectionHandler::new()
                 .await
                 .map_err(|e| error!("Failed to create RabbitMQConnectionHandler {e}\n Please make sure that RabbitMQ is running and that the credentials are correct."))
@@ -74,7 +68,7 @@ impl DungeonPlayerStartupHandler {
             self.game_service_rest_adapter.clone(),
             self.game_application_service.clone(),
             self.player_application_service.clone(),
-            self.robot_application_service.clone(),
+            self.game_logic.clone(),
         )
     }
 

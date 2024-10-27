@@ -1,7 +1,10 @@
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use tracing::{error, info};
 
+use crate::game_logic;
+use crate::game_logic::GameLogic;
 use crate::player::domain::player::Player;
 use crate::repository::AsyncRepository;
 use crate::repository::InMemoryRepository;
@@ -10,15 +13,18 @@ use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 pub struct PlayerApplicationService {
     player_repository: Box<dyn AsyncRepository<Player> + Send + Sync>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
+    game_logic: Arc<Mutex<GameLogic>>,
 }
 
 impl PlayerApplicationService {
     pub fn new(
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
+        game_logic: Arc<Mutex<GameLogic>>,
     ) -> Self {
         Self {
             player_repository: Box::new(InMemoryRepository::new()),
             game_service_rest_adapter,
+            game_logic
         }
     }
     pub async fn query_and_if_needed_create_player(&self) -> Player {
@@ -43,7 +49,8 @@ impl PlayerApplicationService {
         let remote_player_id = self.game_service_rest_adapter.get_player_id().await;
         if let Some(remote_player_id) = remote_player_id {
             info!("Player is already registered remotely, saving player locally");
-            player.assign_player_id(remote_player_id);
+            player.assign_player_id(remote_player_id.clone());
+            self.game_logic.lock().unwrap().game_data.player_id = remote_player_id.clone();
             self.player_repository.save(player.clone()).await.unwrap();
             return player;
         } else {

@@ -28,7 +28,7 @@ impl RoundStatusEventHandler {
 
 #[async_trait]
 impl EventHandler<RoundStatusEvent> for RoundStatusEventHandler {
-    async fn handle(&self, event: RoundStatusEvent) {
+    async fn handle(&mut self, event: RoundStatusEvent) {
         match event.round_status {
             RoundStatusDto::Started => {
                 info!("Round {} started.", event.round_number);

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use tracing::{error, info};
@@ -7,6 +7,7 @@ use crate::eventinfrastructure::event_handler::EventHandler;
 use crate::eventinfrastructure::game::game_status_event::GameStatusEvent;
 use crate::game::application::game_application_service::GameApplicationService;
 use crate::game::domain::game_status::GameStatus;
+use crate::game_logic::{self, GameLogic};
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 

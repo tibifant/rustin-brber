@@ -142,33 +142,28 @@ impl AsyncConsumer for RabbitMQConsumer {
 
 #[cfg(test)]
 mod test {
-    use std::sync::Arc;
+    use std::sync::{Arc, Mutex};
 
     use amqprs::{FieldName, FieldTable};
 
     use crate::eventinfrastructure::event_dispatcher::EventDispatcher;
     use crate::game::application::game_application_service::GameApplicationService;
+    use crate::game_logic::GameLogic;
     use crate::player::application::player_application_service::PlayerApplicationService;
-    use crate::robot::application::robot_application_service::RobotApplicationService;
-    use crate::repository::InMemoryRepository;
     use crate::rest::game_service_rest_adapter_impl::{self, GameServiceRestAdapterImpl};
 
     use super::*;
 
     fn get_rabbitmq_consumer() -> RabbitMQConsumer {
         let game_service_rest_adapter = Arc::new(GameServiceRestAdapterImpl::new());
+        let game_logic = Arc::new(Mutex::new(GameLogic::new()));
         let player_application_service = Arc::new(PlayerApplicationService::new(
             game_service_rest_adapter.clone(),
-        ));
-        let robot_application_service = Arc::new(RobotApplicationService::new(
-            game_service_rest_adapter.clone(),
-            player_application_service.clone(),
-        ));
+            game_logic.clone()
+            ));
         let game_application_service = Arc::new(GameApplicationService::new(
-            Box::new(InMemoryRepository::new()),
             game_service_rest_adapter.clone(),
-            player_application_service.clone(),
-            robot_application_service.clone(),
+            game_logic.clone()
             ));
 
         RabbitMQConsumer::new(
@@ -177,7 +172,7 @@ mod test {
                 Arc::new(GameServiceRestAdapterImpl::new()),
                 game_application_service,
                 player_application_service,
-                robot_application_service,
+                game_logic.clone(),
             ),
         )
     }

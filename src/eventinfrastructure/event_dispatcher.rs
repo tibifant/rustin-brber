@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crate::eventinfrastructure::event_handler::EventHandler;
 use crate::eventinfrastructure::game_event::GameEvent;
@@ -6,20 +6,25 @@ use crate::eventinfrastructure::game_event_body_type::GameEventBodyType;
 use crate::game::application::game_application_service::GameApplicationService;
 use crate::game::application::game_status_event_handler::GameStatusEventHandler;
 use crate::game::application::round_status_event_handler::RoundStatusEventHandler;
-use crate::robot::application::robot_application_service::RobotApplicationService;
-use crate::robot::application::robot_spawned_event_handler::RobotSpawnedEventHandler;
-use crate::robot::application::robots_revealed_event_handler::RobotsRevealedEventHandler;
+use crate::game_logic::{BankAccountInitializedEventHandler, BankAccountTransactionBookedEventHandler, GameLogic, PlanetDiscoveredEventHandler, ResourceMinedEventHandler, RobotResourceMinedEventHandler, RobotResourceRemovedEventHandler, RobotSpawnedEventHandler, RobotsRevealedEventHandler, TradablePricesEventHandler};
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
 use super::robot::robot_resource_mined_event;
-use super::trading::bank_account_initialized_event;
+use super::trading::{bank_account_initialized_event, bank_account_transaction_booked, tradable_prices_event};
 
 pub struct EventDispatcher {
     game_status_event_handler: GameStatusEventHandler,
     round_status_event_handler: RoundStatusEventHandler,
     robot_spawned_event_handler: RobotSpawnedEventHandler,
     robots_revealed_event_handler: RobotsRevealedEventHandler,
+    resource_mined_event_handler: ResourceMinedEventHandler,
+    planet_discovered_handler: PlanetDiscoveredEventHandler,
+    robot_resource_mined_handler: RobotResourceMinedEventHandler,
+    robot_resource_removed_handler: RobotResourceRemovedEventHandler,
+    bank_account_init_handler: BankAccountInitializedEventHandler,
+    bank_account_transaction_booked_handler: BankAccountTransactionBookedEventHandler,
+    trdable_prices_event_handler: TradablePricesEventHandler,
 }
 
 impl EventDispatcher {
@@ -27,7 +32,7 @@ impl EventDispatcher {
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
         game_application_service: Arc<GameApplicationService>,
         player_application_service: Arc<PlayerApplicationService>,
-        robot_application_service: Arc<RobotApplicationService>,
+        game_logic: Arc<Mutex<GameLogic>>,
     ) -> Self {
         Self {
             game_status_event_handler: GameStatusEventHandler::new(
@@ -40,12 +45,20 @@ impl EventDispatcher {
                 game_application_service.clone(),
             ),
             robot_spawned_event_handler: RobotSpawnedEventHandler::new(
-                robot_application_service.clone(), // this needs game_logic now... we will see
+                game_logic.clone(),
             ),
             robots_revealed_event_handler: RobotsRevealedEventHandler::new(
-                robot_application_service.clone(), // this needs game_logic now... we will see
-            )
-            //TODO: add Event Handler for remaining Events
+                game_logic.clone(),
+            ),
+            resource_mined_event_handler: ResourceMinedEventHandler::new(game_logic.clone()),
+            planet_discovered_handler: PlanetDiscoveredEventHandler::new(game_logic.clone()),
+            robot_resource_mined_handler: RobotResourceMinedEventHandler::new(game_logic.clone()),
+            robot_resource_removed_handler: RobotResourceRemovedEventHandler::new(game_logic.clone()),
+            bank_account_init_handler: BankAccountInitializedEventHandler::new(game_logic.clone()),
+            bank_account_transaction_booked_handler: BankAccountTransactionBookedEventHandler::new(game_logic.clone()),
+            trdable_prices_event_handler: TradablePricesEventHandler::new(game_logic.clone()),
+            
+            // if needed: add Event Handler for remaining Events
         }
     }
     pub async fn dispatch(&mut self, event: GameEvent) {
@@ -79,9 +92,14 @@ impl EventDispatcher {
             GameEventBodyType::BankAccountInitialized(bank_account_initialized_event) => {
                 self.bank_account_init_handler.handle(bank_account_initialized_event);
             }
+            GameEventBodyType::BankAccountTransactionBooked(bank_account_transaction_booked) => {
+                self.bank_account_transaction_booked_handler.handle(bank_account_transaction_booked);
+            }
+            GameEventBodyType::TradablePrices(tradable_prices_event) => {
+                self.trdable_prices_event_handler.handle(tradable_prices_event);
+            }
 
-            //TODO: Call Event Handler for Remaining Event Type
-            // handlers for other events
+            // if needed: Call Event Handler for Remaining Event Type
             _ => {}
         }
     }

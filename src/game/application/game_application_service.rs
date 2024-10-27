@@ -1,34 +1,29 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tracing::{error, info, warn};
 
 use crate::config::CONFIG;
 use crate::game::domain::game::Game;
-use crate::player::application::player_application_service::{self, PlayerApplicationService};
-use crate::robot::application::robot_application_service::{self, RobotApplicationService};
-use crate::repository::AsyncRepository;
+use crate::game_logic::GameLogic;
+use crate::repository::{AsyncRepository, InMemoryRepository};
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
-use crate::game::application::game_reaction_service::GameReactionService;
 
 pub struct GameApplicationService {
     game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
     game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-    game_reaction_service: GameReactionService,
+    game_logic: Arc<Mutex<GameLogic>>,
 }
 
 impl GameApplicationService {
     pub fn new(
-        game_repository: Box<dyn AsyncRepository<Game> + Send + Sync>,
         game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>,
-        player_application_service: Arc<PlayerApplicationService>,
-        robot_application_service: Arc<RobotApplicationService>,
+        game_logic: Arc<Mutex<GameLogic>>,
     ) -> Self {
-        let game_reaction_service = GameReactionService::new(
-            game_service_rest_adapter.clone(), player_application_service.clone(), robot_application_service.clone());
+        let game_repository = Box::new(InMemoryRepository::new());
         Self {
             game_repository,
             game_service_rest_adapter,
-            game_reaction_service,
+            game_logic,
         }
     }
 
@@ -70,7 +65,7 @@ impl GameApplicationService {
             Some(mut game) => {
                 game.start_round();
                 self.game_repository.save(game).await.unwrap();
-                self.game_reaction_service.decide().await;
+                self.game_logic.lock().unwrap().round_move(self.game_service_rest_adapter.clone());
             }
             None => {
                 error!("Game with id {} not found", game_id)

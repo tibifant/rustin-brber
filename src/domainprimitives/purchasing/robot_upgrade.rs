@@ -8,6 +8,13 @@ pub struct RobotUpgrade {
 }
 
 impl RobotUpgrade {
+    pub fn new(upgrade_type: RobotUpgradeType, level: RobotLevel) -> Self {
+        Self {
+            upgrade_type,
+            level,
+        }
+    }
+
     pub fn base_for_type(upgrade_type: RobotUpgradeType) -> RobotUpgrade {
         RobotUpgrade {
             upgrade_type,
