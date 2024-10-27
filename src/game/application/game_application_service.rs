@@ -1,5 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+use tokio::sync::Mutex;
 use tracing::{error, info, warn};
 
 use crate::config::CONFIG;
@@ -44,6 +45,8 @@ impl GameApplicationService {
     }
 
     pub async fn end_game(&self, game_id: &str) {
+        self.game_logic.lock().await.clear_game();
+
         let game = self.game_repository.get(game_id).await.unwrap();
         match game {
             Some(mut game) => {
@@ -65,7 +68,7 @@ impl GameApplicationService {
             Some(mut game) => {
                 game.start_round();
                 self.game_repository.save(game).await.unwrap();
-                self.game_logic.lock().unwrap().round_move(self.game_service_rest_adapter.clone());
+                self.game_logic.lock().await.round_move(self.game_service_rest_adapter.clone()).await;
             }
             None => {
                 error!("Game with id {} not found", game_id)

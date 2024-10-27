@@ -1,4 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+
+use tokio::sync::Mutex;
 
 use crate::eventinfrastructure::event_handler::EventHandler;
 use crate::eventinfrastructure::game_event::GameEvent;
@@ -10,7 +12,6 @@ use crate::game_logic::{BankAccountInitializedEventHandler, BankAccountTransacti
 use crate::player::application::player_application_service::PlayerApplicationService;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 
-use super::robot::robot_resource_mined_event;
 use super::trading::{bank_account_initialized_event, bank_account_transaction_booked, tradable_prices_event};
 
 pub struct EventDispatcher {

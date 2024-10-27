@@ -1,5 +1,6 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+use tokio::sync::Mutex;
 use tracing::error;
 
 use crate::config::CONFIG;
@@ -9,7 +10,6 @@ use crate::game::application::game_application_service::GameApplicationService;
 use crate::game_logic::GameLogic;
 use crate::player::application::player_application_service::{self, PlayerApplicationService};
 use crate::player::domain::player::Player;
-use crate::repository::InMemoryRepository;
 use crate::rest::game_service_rest_adapter_impl::*;
 use crate::rest::game_service_rest_adapter_trait::GameServiceRestAdapterTrait;
 

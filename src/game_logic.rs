@@ -1,7 +1,9 @@
 use std::f32::consts::E;
 use std::{collections::HashMap, hash::Hash};
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+
+use tokio::sync::Mutex;
 
 use serde_json::de;
 use tracing::info;
@@ -182,13 +184,13 @@ pub struct PermanetRobotInfo {
 
 pub struct RobotDecisionInfo {
   pub id: String,
-  pub action: Box<dyn Action>,
-  pub upgrade_action: Box<dyn Action>,
+  pub action: Box<dyn Action + Send + Sync>,
+  pub upgrade_action: Box<dyn Action + Send + Sync>,
   pub has_upgrade: bool,
 }
 
 impl RobotDecisionInfo {
-  pub fn new(id: String, action: Box<dyn Action>, upgrade_action: Box<dyn Action>, has_upgrade: bool) -> Self {
+  pub fn new(id: String, action: Box<dyn Action + Send + Sync>, upgrade_action: Box<dyn Action + Send + Sync>, has_upgrade: bool) -> Self {
     Self {
       id,
       action,
@@ -302,14 +304,16 @@ impl GameLogic {
     }
   }
 
-  pub fn round_move(&mut self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>) {
+  pub async fn round_move(&mut self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>) {
 
     self.game_data.robot_buy_amount = 0;
 
     let mut decision_info = DecisionInfo::new();
 
     for (id, robot) in &mut self.game_data.robots {
-      let r = RobotDecisionInfo::new(id.clone(), Box::new(NoneAction::new()), Box::new(NoneAction::new()), false);
+      let a: Box<dyn Action + Send + Sync> = Box::new(NoneAction::new());
+      let pa: Box<dyn Action + Send + Sync> = Box::new(NoneAction::new());
+      let r = RobotDecisionInfo::new(id.clone(), a, pa, false);
       decision_info.robots.insert(id.clone(), r);
     }
 
@@ -328,10 +332,13 @@ impl GameLogic {
     }
 
     for (_id, robot) in &mut decision_info.robots {
-      robot.action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string());
+      robot.action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()).await;
+      robot.upgrade_action.execute_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), robot.id.to_string()).await;
     }
 
-    execute_purchase_robots_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), self.game_data.robot_buy_amount);
+    if self.game_data.robot_buy_amount > 0 {
+      execute_purchase_robots_command(game_service_rest_adapter.clone(), self.game_data.player_id.to_string(), self.game_data.robot_buy_amount).await;
+    }
   }
 
   fn offer_movement_mining_attack_option(&mut self, robot_id: String, robot_decision: &mut RobotDecisionInfo) {
@@ -347,7 +354,7 @@ impl GameLogic {
                   let weight: f32 = (robot_info.attack_damage - e.damage_level.get_attack_damage_value_for_level()) as f32;
                 
                   if robot_decision.action.get_weight() < weight {
-                    let attack_option = Box::new(AttackAction::new(weight, e_id.to_string()));
+                    let attack_option: Box<dyn Action + Send + Sync> = Box::new(AttackAction::new(weight, e_id.to_string()));
                     robot_decision.action = attack_option;
                   }
                   break;
@@ -404,21 +411,22 @@ impl GameLogic {
                     let weight = best_price + best_planet_amount as f32;
                   
                     if robot_decision.action.get_weight() < weight {
-                      let movement_option = Box::new(MovementAction::new(weight, best_planet, planet.clone()));
+                      let movement_option: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(weight, best_planet, planet.clone()));
                       robot_decision.action = movement_option;
                     }
                   } else {
                     let weight = planet.last_known_amount as f32 + best_price;
                   
                     if robot_decision.action.get_weight() < weight {
-                      let mining_option = Box::new(MineAction::new(weight, planet.id.to_string()));
+                      let mining_option: Box<dyn Action + Send + Sync> = Box::new(MineAction::new(weight, planet.id.to_string()));
                       robot_decision.action = mining_option;
                     }
                   }
                 }
                 else {
                   if robot_decision.action.get_weight() < 2000. {
-                    robot_decision.action = Box::new(MovementAction::new(2000., Direction::East, planet.clone()));
+                    let a: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(2000., Direction::East, planet.clone()));
+                    robot_decision.action = a;
                   }
                 }
               }
@@ -427,7 +435,8 @@ impl GameLogic {
           }
         }
         else {
-          robot_decision.action = Box::new(RegenerateAction::new(9999999.));
+          let a: Box<dyn Action + Send + Sync> = Box::new(RegenerateAction::new(9999999.));
+          robot_decision.action = a;
         }
       }
     }
@@ -439,7 +448,7 @@ impl GameLogic {
         let inventory_weight = 0.1 * ((robot_info.max_health - robot.health) as f32) * (robot_info.inventory.coal as f32) * self.round_data.resource_prices.get(&MineableResourceType::COAL).unwrap_or(&0.) + (robot_info.inventory.gem as f32) * self.round_data.resource_prices.get(&MineableResourceType::GEM).unwrap_or(&0.) + (robot_info.inventory.gold  as f32) * self.round_data.resource_prices.get(&MineableResourceType::GOLD).unwrap_or(&0.)+ (robot_info.inventory.iron as f32) * self.round_data.resource_prices.get(&MineableResourceType::IRON).unwrap_or(&0.) + (robot_info.inventory.platin as f32) * self.round_data.resource_prices.get(&MineableResourceType::PLATIN).unwrap_or(&0.);
 
         if inventory_weight > robot_decision.action.get_weight() {
-          let inventory_option = Box::new(SellAction::new(inventory_weight as f32));
+          let inventory_option: Box<dyn Action + Send + Sync> = Box::new(SellAction::new(inventory_weight as f32));
           robot_decision.action = inventory_option;
         }
       }
@@ -544,13 +553,15 @@ impl GameLogic {
         if let Some(best_robot) = decision_info.robots.get_mut(&id) {
           if !is_upgrade {
             if best_weight > best_robot.action.get_weight() {
-              best_robot.action = Box::new(PurchaseAction::new(best_weight as f32, best_item));
+              let a: Box<dyn Action + Send + Sync> = Box::new(PurchaseAction::new(best_weight as f32, best_item));
+              best_robot.action = a;
               self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000.);
               return true;
             }
           }
           else {
-            best_robot.upgrade_action = Box::new(PurchaseAction::new(best_weight as f32, best_item));
+            let a: Box<dyn Action + Send + Sync> = Box::new(PurchaseAction::new(best_weight as f32, best_item));
+            best_robot.upgrade_action = a;
             best_robot.has_upgrade = true;
             self.round_data.balance -= *self.round_data.item_prices.get(&(best_item.clone())).unwrap_or(&10000000.);
             return true;
@@ -684,17 +695,27 @@ impl GameLogic {
     self.round_data.planets.insert(planet.id.clone(), planet);
     self.game_data.planets.insert(planet_info.id.clone(), planet_info);
   }
+
+  pub fn clear_game(&mut self) {
+    let player_id = self.game_data.player_id.clone();
+
+    self.game_data = GameData::new();
+    self.game_data.player_id = player_id;
+
+    self.round_data = RoundData::new();
+  }
 }
 
-pub fn execute_purchase_robots_command(game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, amount: u16) {
+pub async fn execute_purchase_robots_command(game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, amount: u16) {
   let buy_robot_command = Command::create_robot_purchase_command(player_id, amount);
   info!("====> Try to buy Robots!!!!!!!!!!!!!!.");
-  let _ = game_service_rest_adapter.send_command(buy_robot_command);
+  let _ = game_service_rest_adapter.send_command(buy_robot_command).await;
 }
 
-pub trait Action {
+#[async_trait]
+pub trait Action: Send + Sync {
   fn get_weight(&self) -> f32;
-  fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String);
+  async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String);
 }
 
 pub struct MovementAction {
@@ -713,12 +734,13 @@ impl MovementAction {
   }
 }
 
+#[async_trait]
 impl Action for MovementAction {
   fn get_weight(&self) -> f32 {
     return self.weight;
   }
 
-  fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
+  async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
     let mut planet_id = String::new();
     
     match self.dir {
@@ -730,6 +752,7 @@ impl Action for MovementAction {
     }
 
     let command = Command::create_movement_command(player_id, robot_id, planet_id);
+    game_service_rest_adapter.send_command(command).await;
   }
 }
 
@@ -748,15 +771,16 @@ impl AttackAction {
 
 } 
 
+#[async_trait]
 impl Action for AttackAction {
   fn get_weight(&self) -> f32 {
       return self.weight;
   }
 
-  fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
+  async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
       let command = Command::create_robot_attack_command(player_id, robot_id, self.target_robot.clone());
       info!("====> Trying to Attack!!!!!!!!!!!");
-      game_service_rest_adapter.send_command(command);
+      game_service_rest_adapter.send_command(command).await;
   }
 }
 
@@ -772,15 +796,16 @@ impl RegenerateAction {
   }
 } 
 
+#[async_trait]
 impl Action for RegenerateAction {
   fn get_weight(&self) -> f32 {
       return self.weight;
   }
 
-  fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
+  async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
       let command = Command::create_robot_regenerate_command(player_id, robot_id);
       info!("====> Trying to Regenerate!!!!!!!!!!!");
-      game_service_rest_adapter.send_command(command);
+      game_service_rest_adapter.send_command(command).await;
   }
 }
 
@@ -796,15 +821,16 @@ impl SellAction {
   }
 }
 
+#[async_trait]
 impl Action for SellAction {
   fn get_weight(&self) -> f32 {
     return self.weight;
   }
 
-  fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
+  async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
     let command = Command::create_robot_sell_inventory_command(player_id, robot_id);
     info!("====> Trying to Sell Inventory!!!!!!!!!!!");
-    game_service_rest_adapter.send_command(command);
+    game_service_rest_adapter.send_command(command).await;
   }
 }
 
@@ -822,15 +848,16 @@ impl MineAction {
   }
 }
 
+#[async_trait]
 impl Action for MineAction {
   fn get_weight(&self) -> f32 {
     return self.weight;
   }
 
-  fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
+  async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
     let command = Command::create_robot_mine_command(player_id, robot_id, self.target_planet_id.clone());
     info!("====> Trying to Attack!!!!!!!!!!!");
-    game_service_rest_adapter.send_command(command);
+    game_service_rest_adapter.send_command(command).await;
   }
 }
 
@@ -848,12 +875,13 @@ impl PurchaseAction {
   }
 }
 
+#[async_trait]
 impl Action for PurchaseAction {
   fn get_weight(&self) -> f32 {
     return self.weight;
   }
 
-  fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
+  async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
     let mut command = None;
 
     match self.item {
@@ -1007,7 +1035,7 @@ impl Action for PurchaseAction {
     }
     
     match command {
-      Some(command) => { game_service_rest_adapter.send_command(command); },
+      Some(command) => { game_service_rest_adapter.send_command(command).await; },
       None => {},
     }
   }
@@ -1027,12 +1055,13 @@ impl NoneAction {
   }
 }
 
+#[async_trait]
 impl Action for NoneAction {
   fn get_weight(&self) -> f32 {
       return self.weight;
   }
 
-  fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
+  async fn execute_command(&self, game_service_rest_adapter: Arc<dyn GameServiceRestAdapterTrait>, player_id: String, robot_id: String) {
       return;
   }
 }
@@ -1053,7 +1082,7 @@ impl RobotsRevealedEventHandler {
 #[async_trait]
 impl EventHandler<RobotsRevealedEvent> for RobotsRevealedEventHandler {
   async fn handle(&self, event: RobotsRevealedEvent) {
-    let mut game_mut = self.game.lock().unwrap();
+    let mut game_mut = self.game.lock().await;
     for r in event.robots.iter() {
       let mut robot = MinimalRobot::new(r.robot_id.to_string(), r.planet_id.to_string(), r.energy, r.health, r.levels.health_level, r.levels.damage_level, r.levels.mining_speed_level, r.levels.mining_level, r.levels.energy_level, r.levels.energy_regen_level, r.levels.storage_level);
       
@@ -1094,7 +1123,7 @@ impl EventHandler<RobotSpawnedEvent> for RobotSpawnedEventHandler {
 
       let robot = Robot::new(robot_info, inventory, r.robot_attributes.max_health, r.robot_attributes.max_energy, r.robot_attributes.energy_regen, r.robot_attributes.attack_damage, r.robot_attributes.mining_speed, r.player_id);
 
-      self.game.lock().unwrap().save_robot(robot);
+      self.game.lock().await.save_robot(robot);
   }
 }
 
@@ -1112,7 +1141,7 @@ impl ResourceMinedEventHandler {
 #[async_trait]
 impl EventHandler<PlanetResourceMinedEvent> for ResourceMinedEventHandler {
   async fn handle(&self, event: PlanetResourceMinedEvent) {
-    self.game.lock().unwrap().update_planet(event.planet_id, event.mined_amount);
+    self.game.lock().await.update_planet(event.planet_id, event.mined_amount);
   }
 }
 
@@ -1150,7 +1179,7 @@ impl EventHandler<PlanetDiscoveredEvent> for PlanetDiscoveredEventHandler {
 
     let planet_info = PermanentPlanetInfo::new(event.planet_id.clone(), event.movement_difficulty, event.resource.resource_type, event.resource.max_amount, event.resource.current_amount, north_planet, east_planet, south_planet, west_planet);
     
-    self.game.lock().unwrap().save_planet(planet, planet_info);
+    self.game.lock().await.save_planet(planet, planet_info);
   }
 }
 
@@ -1169,7 +1198,7 @@ impl RobotResourceMinedEventHandler {
 #[async_trait]
 impl EventHandler<RobotResourceMinedEvent> for RobotResourceMinedEventHandler {
   async fn handle(&self, event: RobotResourceMinedEvent) {
-    self.game.lock().unwrap().update_inventory_add(event.robot_id, event.mined_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
+    self.game.lock().await.update_inventory_add(event.robot_id, event.mined_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
   }
 }
 
@@ -1188,7 +1217,7 @@ impl RobotResourceRemovedEventHandler {
 #[async_trait]
 impl EventHandler<RobotResourceRemovedEvent> for RobotResourceRemovedEventHandler {
   async fn handle(&self, event: RobotResourceRemovedEvent) {
-    self.game.lock().unwrap().update_inventory_remove(event.robot_id, event.removed_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
+    self.game.lock().await.update_inventory_remove(event.robot_id, event.removed_amount, event.resource_inventory.coal, event.resource_inventory.gem, event.resource_inventory.gold, event.resource_inventory.iron, event.resource_inventory.platin);
   }
 }
 
@@ -1207,7 +1236,7 @@ impl BankAccountInitializedEventHandler {
 #[async_trait]
 impl EventHandler<BankAccountInitializedEvent> for BankAccountInitializedEventHandler {
   async fn handle(&self, event: BankAccountInitializedEvent) {
-    let mut game_mut = self.game.lock().unwrap();
+    let mut game_mut = self.game.lock().await;
     if event.player_id == game_mut.game_data.player_id {
       game_mut.balance_update(event.balance);
     }
@@ -1229,7 +1258,7 @@ impl BankAccountTransactionBookedEventHandler {
 #[async_trait]
 impl EventHandler<BankAccountTransactionBookedEvent> for BankAccountTransactionBookedEventHandler {
   async fn handle(&self, event: BankAccountTransactionBookedEvent) {
-    let mut game_mut = self.game.lock().unwrap();
+    let mut game_mut = self.game.lock().await;
     if event.player_id == game_mut.game_data.player_id {
       game_mut.balance_update(event.balance);
     }
@@ -1251,7 +1280,7 @@ impl TradablePricesEventHandler {
 #[async_trait]
 impl EventHandler<TradablePricesEvent> for TradablePricesEventHandler {
   async fn handle(&self, event: TradablePricesEvent) {
-    let mut game_mut = self.game.lock().unwrap();
+    let mut game_mut = self.game.lock().await;
     for item in event.items {
       match item.name.as_str() {
         "MINING_SPEED_1" => game_mut.update_item_price(TradeItemType::MiningSpeed1, item.price as f32),

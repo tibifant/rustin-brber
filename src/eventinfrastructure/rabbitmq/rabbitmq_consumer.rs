@@ -142,7 +142,9 @@ impl AsyncConsumer for RabbitMQConsumer {
 
 #[cfg(test)]
 mod test {
-    use std::sync::{Arc, Mutex};
+    use std::sync::Arc;
+    
+    use tokio::sync::Mutex;
 
     use amqprs::{FieldName, FieldTable};
 

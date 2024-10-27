@@ -1,6 +1,6 @@
 use std::sync::Arc;
-use std::sync::Mutex;
 
+use tokio::sync::Mutex;
 use tracing::{error, info};
 
 use crate::game_logic;
@@ -50,7 +50,7 @@ impl PlayerApplicationService {
         if let Some(remote_player_id) = remote_player_id {
             info!("Player is already registered remotely, saving player locally");
             player.assign_player_id(remote_player_id.clone());
-            self.game_logic.lock().unwrap().game_data.player_id = remote_player_id.clone();
+            self.game_logic.lock().await.game_data.player_id = remote_player_id.clone();
             self.player_repository.save(player.clone()).await.unwrap();
             return player;
         } else {
