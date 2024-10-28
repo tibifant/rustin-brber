@@ -48,7 +48,15 @@ impl GameLogicService {
     }
     
     while self.round_data.balance > 0. {
-      if !self.spend_money(&mut decision_info) {
+      //if !self.spend_money(&mut decision_info) {
+      //  break;
+
+      // we generated a wild error when sending the purchase item command - I really need to go to sleep and don't have any patience for fixing the skeleton left. So only robot purchases allowed.
+      if self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.) {
+        self.game_data.robot_buy_amount += 1;
+        self.round_data.balance -= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.);
+      }
+      else {
         break;
       }
     }
@@ -251,7 +259,7 @@ impl GameLogicService {
 
     if lowest_robot_level == highest_robot_level && highest_robot_level != RobotLevel::LEVEL0 || robot_count < min_robot_count || lowest_level_robot.is_empty() {
       if self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.) {
-        self.game_data.robot_buy_amount += 1; 
+        self.game_data.robot_buy_amount += 1;
         self.round_data.balance -= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.);
         return true;
       } else {

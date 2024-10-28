@@ -11,7 +11,7 @@ Rustin Brber evaluates the best Option for his Robots - he can:
 - mine Resources
 - regenerate Energy
 - attack other Robots (untested because of limited time)
-- and purchase Health Restore!
+- and purchase Health Restore! ---> nvm the command caused a wild error and I have no more time and patience and sleepless nights left to fix more failures of the skeleton. So this part got commented out.
 
 Rustin Brber handles most of the GameEvents, but there are a few less important events still left to implementet. Those can be found in `GameEventBodyType.rs`.
 
