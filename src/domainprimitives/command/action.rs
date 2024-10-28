@@ -336,7 +336,7 @@ impl Action for PurchaseAction {
     info!("====> Trying to Purchase Item!!!!!!!!!!!");
     
     match command {
-      Some(command) => { game_service_rest_adapter.send_command(command).await; },
+      Some(command) => { let cmd = game_service_rest_adapter.send_command(command).await; println!("{:?}", cmd); },
       None => {},
     }
   }

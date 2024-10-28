@@ -46,6 +46,7 @@ impl TradeItemType {
   pub fn get_next_level_item(upgrade_type: RobotUpgradeType, current_level: u16) -> Option<TradeItemType> {
     match upgrade_type {
         RobotUpgradeType::Storage => match current_level {
+            0 => Some(TradeItemType::Storage1),
             1 => Some(TradeItemType::Storage2),
             2 => Some(TradeItemType::Storage3),
             3 => Some(TradeItemType::Storage4),
@@ -53,6 +54,7 @@ impl TradeItemType {
             _ => None,
         },
         RobotUpgradeType::Health => match current_level {
+            0 => Some(TradeItemType::Health1),
             1 => Some(TradeItemType::Health2),
             2 => Some(TradeItemType::Health3),
             3 => Some(TradeItemType::Health4),
@@ -60,6 +62,7 @@ impl TradeItemType {
             _ => None,
         },
         RobotUpgradeType::Damage => match current_level {
+            0 => Some(TradeItemType::Damage1),
             1 => Some(TradeItemType::Damage2),
             2 => Some(TradeItemType::Damage3),
             3 => Some(TradeItemType::Damage4),
@@ -67,6 +70,7 @@ impl TradeItemType {
             _ => None,
         },
         RobotUpgradeType::MiningSpeed => match current_level {
+            0 => Some(TradeItemType::MiningSpeed1),
             1 => Some(TradeItemType::MiningSpeed2),
             2 => Some(TradeItemType::MiningSpeed3),
             3 => Some(TradeItemType::MiningSpeed4),
@@ -74,6 +78,7 @@ impl TradeItemType {
             _ => None,
         },
         RobotUpgradeType::Mining => match current_level {
+            0 => Some(TradeItemType::Mining1),
             1 => Some(TradeItemType::Mining2),
             2 => Some(TradeItemType::Mining3),
             3 => Some(TradeItemType::Mining4),
@@ -81,6 +86,7 @@ impl TradeItemType {
             _ => None,
         },
         RobotUpgradeType::MaxEnergy => match current_level {
+            0 => Some(TradeItemType::MaxEnergy1),
             1 => Some(TradeItemType::MaxEnergy2),
             2 => Some(TradeItemType::MaxEnergy3),
             3 => Some(TradeItemType::MaxEnergy4),
@@ -88,6 +94,7 @@ impl TradeItemType {
             _ => None,
         },
         RobotUpgradeType::EnergyRegen => match current_level {
+            0 => Some(TradeItemType::EnergyRegen1),
             1 => Some(TradeItemType::EnergyRegen2),
             2 => Some(TradeItemType::EnergyRegen3),
             3 => Some(TradeItemType::EnergyRegen4),

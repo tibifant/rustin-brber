@@ -249,9 +249,9 @@ impl GameLogicService {
 
     let min_robot_count = ((highest_robot_level as usize) + 1) * 3;
 
-    if lowest_robot_level == highest_robot_level || robot_count < min_robot_count || lowest_level_robot.is_empty() {
+    if lowest_robot_level == highest_robot_level && highest_robot_level != RobotLevel::LEVEL0 || robot_count < min_robot_count || lowest_level_robot.is_empty() {
       if self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.) {
-        self.game_data.robot_buy_amount += 1;
+        self.game_data.robot_buy_amount += 1; 
         self.round_data.balance -= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.);
         return true;
       } else {
@@ -259,7 +259,7 @@ impl GameLogicService {
       }
     } else {
       // buy upgrade for lowest_level_robot, if sufficient funds.
-      if let Some(item) = TradeItemType::get_next_level_item(RobotUpgradeType::Mining, (lowest_robot_level as u16) + 1) {
+      if let Some(item) = TradeItemType::get_next_level_item(RobotUpgradeType::Mining, (lowest_robot_level as u16)) {
         if self.round_data.balance >= *self.round_data.item_prices.get(&item).unwrap_or(&99999.) {
           if let Some(r) = decision_info.robots.get_mut(&lowest_level_robot) {
             r.has_upgrade = true;
