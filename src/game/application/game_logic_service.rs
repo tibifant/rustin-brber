@@ -68,9 +68,10 @@ impl GameLogicService {
   }
 
   fn offer_movement_mining_attack_option(&mut self, robot_id: String, robot_decision: &mut RobotDecisionInfo) {
+    let mut set_action = false;
     if let Some(robot_info) = self.game_data.robots.get(&robot_id) {
       if let Some(robot) = self.round_data.robots.get(&robot_id) {
-        if robot.energy > 0 {
+        if robot.energy > 3 { // not sure how much energy we need for which action
           if let Some(planet) = self.game_data.planets.get(&robot.planet_id) {
             let mut known_neighbours = 0;
             if let Some(resource) = planet.resource {
@@ -81,6 +82,7 @@ impl GameLogicService {
                   if robot_decision.action.get_weight() < weight {
                     let attack_option: Box<dyn Action + Send + Sync> = Box::new(AttackAction::new(weight, e_id.to_string()));
                     robot_decision.action = attack_option;
+                    set_action = true;
                   }
                   break;
                 }
@@ -91,22 +93,22 @@ impl GameLogicService {
               let mut best_planet_amount = resource.current_amount;
 
               if let Some(p) = self.game_data.planets.get(&planet.north) {
-                self.evaluate_planet(Direction::North, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
+                self.evaluate_planet(robot.mining_level, Direction::North, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
                 known_neighbours += 1;
               }
             
               if let Some(p) = self.game_data.planets.get(&planet.south) {
-                self.evaluate_planet(Direction::South, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
+                self.evaluate_planet(robot.mining_level, Direction::South, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
                 known_neighbours += 1;
               }
             
               if let Some(p) = self.game_data.planets.get(&planet.west) {
-                self.evaluate_planet(Direction::West, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
+                self.evaluate_planet(robot.mining_level, Direction::West, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
                 known_neighbours += 1;
               }
             
               if let Some(p) = self.game_data.planets.get(&planet.east) {
-                self.evaluate_planet(Direction::East, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
+                self.evaluate_planet(robot.mining_level, Direction::East, p, &mut best_planet, &mut best_price, &mut best_planet_amount);
                 known_neighbours += 1;
               }
             
@@ -117,13 +119,15 @@ impl GameLogicService {
                   if robot_decision.action.get_weight() < weight {
                     let movement_option: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(weight, best_planet, planet.clone()));
                     robot_decision.action = movement_option;
+                    set_action = true;
                   }
                 } else if !robot_info.inventory.full {
                   let weight = resource.current_amount /* LAST KNOWN, not *ACTUALLY* CURRENT */ as f32 + best_price;
                 
-                  if robot_decision.action.get_weight() < weight && (robot.mining_level as u8) >= planet.movement_difficulty{
+                  if robot_decision.action.get_weight() < weight && (robot.mining_level as u8) >= (resource.resource_type as u8) {
                     let mining_option: Box<dyn Action + Send + Sync> = Box::new(MineAction::new(weight, planet.id.to_string()));
                     robot_decision.action = mining_option;
+                    set_action = true;
                   }
                 }
               }
@@ -131,6 +135,7 @@ impl GameLogicService {
                 if robot_decision.action.get_weight() < 20000. {
                   let a: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(20000., Direction::East, planet.clone()));
                   robot_decision.action = a;
+                  set_action = true;
                 }
               }
             }
@@ -138,6 +143,7 @@ impl GameLogicService {
               if robot_decision.action.get_weight() < 20000. {
                 let a: Box<dyn Action + Send + Sync> = Box::new(MovementAction::new(20000., Direction::East, planet.clone()));
                 robot_decision.action = a;
+                set_action = true;
               }
             }
 
@@ -146,16 +152,19 @@ impl GameLogicService {
                 0 => { 
                     if planet.north != "" {
                       robot_decision.action = Box::new(MovementAction::new(9999999., Direction::North, planet.clone()));
+                      set_action = true;
                     }
                   }
                 1 =>  {
                     if planet.east != "" {
                       robot_decision.action = Box::new(MovementAction::new(9999999., Direction::East, planet.clone()));
+                      set_action = true;
                     }
                   }
                 2 | 3 =>  {
                     if planet.south != "" { 
                       robot_decision.action = Box::new(MovementAction::new(9999999., Direction::South, planet.clone()));
+                      set_action = true;
                     }
                   }
                 _ => (),
@@ -167,12 +176,23 @@ impl GameLogicService {
         else {
           let a: Box<dyn Action + Send + Sync> = Box::new(RegenerateAction::new(9999999.));
           robot_decision.action = a;
+          set_action = true;
+        }
+
+        if !set_action {
+          let a: Box<dyn Action + Send + Sync> = Box::new(RegenerateAction::new(9999.));
+          robot_decision.action = a;
         }
       }
     }
   }
 
-  fn evaluate_planet(&self, dir: Direction, planet: &PersistentPlanetInfo, best_planet: &mut Direction, best_price: &mut f32, best_amount: &mut u32) {
+  fn evaluate_planet(&self, mining_level: RobotLevel, dir: Direction, planet: &PersistentPlanetInfo, best_planet: &mut Direction, best_price: &mut f32, best_amount: &mut u32) {
+    if let Some(rsrc) = planet.resource {
+      if (mining_level as u8) < (rsrc.resource_type as u8) {
+        return;
+      }
+    }
     if let Some(resource) = planet.resource {
       let price = self.round_data.resource_prices.get(&resource.resource_type).unwrap_or(&0.);
       if (price > best_price) {
@@ -216,7 +236,7 @@ impl GameLogicService {
           }
         }
 
-        if ((robot.mining_level as u16) < (lowest_robot_level as u16)) {
+        if ((robot.mining_level as u16) <= (lowest_robot_level as u16)) {
           lowest_level_robot = id;
           lowest_robot_level = robot.mining_level;
         }
@@ -232,6 +252,7 @@ impl GameLogicService {
     if lowest_robot_level == highest_robot_level || robot_count < min_robot_count || lowest_level_robot.is_empty() {
       if self.round_data.balance >= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.) {
         self.game_data.robot_buy_amount += 1;
+        self.round_data.balance -= *self.round_data.item_prices.get(&TradeItemType::Robot).unwrap_or(&99999.);
         return true;
       } else {
         return false;
@@ -243,6 +264,7 @@ impl GameLogicService {
           if let Some(r) = decision_info.robots.get_mut(&lowest_level_robot) {
             r.has_upgrade = true;
             r.upgrade_action = Box::new(PurchaseAction::new(10000., item));
+            self.round_data.balance -= *self.round_data.item_prices.get(&item).unwrap_or(&99999.);
             return true;
           }
         } else {
@@ -264,6 +286,7 @@ impl GameLogicService {
                   
                   robot_decision_info.has_upgrade = true;
                   robot_decision_info.upgrade_action = Box::new(PurchaseAction::new(weight, item));
+                  self.round_data.balance -= *self.round_data.item_prices.get(&item).unwrap_or(&99999.);
                   return true;
                 }
               }
